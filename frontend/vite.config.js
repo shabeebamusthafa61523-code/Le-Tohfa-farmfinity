@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react' // Ensure react plugin is imported
+import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
@@ -7,11 +7,19 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+
+  // ✅ Fix build entry issue for Vercel
+  build: {
+    rollupOptions: {
+      input: '/index.html',
+    },
+  },
+
+  // ✅ Dev server proxy (works only locally)
   server: {
     proxy: {
-      // This catches any request starting with /api and sends it to your Node.js server
       '/api': {
-        target: 'http://localhost:5000', // Change to 8000 if that's your backend port
+        target: 'http://localhost:5000', // change if your backend runs on another port
         changeOrigin: true,
         secure: false,
       },
