@@ -1,0 +1,51 @@
+/* Custom Luxury Calendar Styles */
+.luxury-calendar {
+  width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.react-calendar__navigation button {
+  font-family: 'Playfair Display', serif !important;
+  font-style: italic !important;
+  font-size: 1.2rem !important;
+  color: #2d3a2d !important;
+}
+
+.react-calendar__month-view__weekdays {
+  text-transform: uppercase !important;
+  font-size: 0.6rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.2em !important;
+  color: #8ba88b !important;
+}
+
+.react-calendar__tile {
+  padding: 1.5em 0.5em !important;
+  border-radius: 12px !important;
+  transition: all 0.3s ease !important;
+}
+
+.react-calendar__tile--now {
+  background: #f4f7f4 !important;
+  color: #2d3a2d !important;
+}
+
+.react-calendar__tile--active {
+  background: #2d3a2d !important;
+  color: white !important;
+  border-radius: 12px !important;
+}
+
+.react-calendar__tile:enabled:hover, 
+.react-calendar__tile:enabled:focus {
+  background-color: #8ba88b !important;
+  color: white !important;
+}
+
+.react-calendar__tile:disabled {
+  background-color: transparent !important;
+  color: #e0e0e0 !important;
+  text-decoration: line-through !important;
+}

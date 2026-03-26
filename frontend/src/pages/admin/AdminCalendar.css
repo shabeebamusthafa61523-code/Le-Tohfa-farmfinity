@@ -1,0 +1,17 @@
+/* Custom styling for the Admin Calendar */
+.admin-custom-calendar {
+  width: 100% !important;
+  border: none !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.booked-tile {
+  background: #2d3a2d !important; /* farm-dark */
+  color: white !important;
+  border-radius: 12px;
+}
+
+.react-calendar__tile--active {
+  background: #8ba88b !important; /* farm-sage */
+  border-radius: 12px;
+}

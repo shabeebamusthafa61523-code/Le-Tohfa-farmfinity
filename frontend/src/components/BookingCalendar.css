@@ -1,0 +1,113 @@
+/* Container styling to match your screenshots */
+.premium-calendar-v2 {
+  background: transparent;
+  padding: 10px;
+}
+
+/* Base Calendar Override */
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  font-family: inherit !important;
+}
+
+/* Navigation (Month name and arrows) */
+.react-calendar__navigation {
+  margin-bottom: 2rem !important;
+  display: flex;
+  align-items: center;
+}
+
+.react-calendar__navigation button {
+  min-width: 44px !important;
+  background: none !important;
+  font-size: 1.2rem !important;
+  color: #2d3a2d !important;
+  font-family: 'Playfair Display', serif !important;
+  font-style: italic !important;
+}
+
+/* Day Names (Mon, Tue, etc.) */
+.react-calendar__month-view__weekdays {
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 1px;
+  color: #adb5bd !important;
+  text-decoration: none !important;
+  margin-bottom: 1rem;
+}
+
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none !important;
+}
+
+/* The Tiles (Date Squares) */
+.react-calendar__tile {
+  padding: 1.5rem 0.5rem !important;
+  margin: 4px 0 !important; /* Vertical spacing */
+  border-radius: 1.2rem !important; /* Rounded corners like image */
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease;
+  background: transparent;
+  color: #2d3a2d;
+}
+
+/* Available Status (Soft Green) */
+.available-tile {
+  background-color: #f0fdf4 !important; /* Very light green */
+  color: #166534 !important;
+}
+
+/* Selected Date (Dark Charcoal) */
+.react-calendar__tile--active,
+.react-calendar__tile--active:enabled:hover,
+.react-calendar__tile--active:enabled:focus {
+  background: #2d3a2d !important;
+  color: white !important;
+  box-shadow: 0 10px 15px -3px rgba(45, 58, 45, 0.3);
+}
+
+/* Hover effect for available dates */
+.react-calendar__tile:enabled:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Booked/Blocked Status (Soft Red) */
+.booked-tile {
+  background-color: #fff1f2 !important; /* Soft red bg */
+  color: #fb7185 !important; /* Muted red text */
+  text-decoration: none !important; /* Keep it clean */
+  cursor: not-allowed;
+}
+
+/* Remove the default 'now' highlight if it clashes */
+.react-calendar__tile--now {
+  background: transparent !important;
+  border: 1px solid #2d3a2d !important;
+}
+
+/* Hide dates from other months */
+.react-calendar__month-view__days__day--neighboringMonth {
+  visibility: hidden;
+}
+
+/* Legend Styling */
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
