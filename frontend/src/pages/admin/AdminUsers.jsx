@@ -10,7 +10,7 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
 
   const { token, user: currentUser } = useSelector((state) => state.auth);
-  const API_URL = 'http://localhost:5000/api/auth';
+ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/auth";
 
   useEffect(() => {
     const fetchUsers = async () => {

@@ -24,7 +24,7 @@ const UserProfile = () => {
       try {
         const config = { headers: { Authorization: `Bearer ${token}` } };
         // Assuming your backend has a GET /profile route or returns data on login/update
-        const { data } = await axios.get('http://localhost:5000/api/auth/profile', config);
+        const { data } = await axios.get(`${API_URL}/api/auth/profile`, config);
         
         // Sync Redux with the freshest data from DB
         dispatch(authSuccess(data)); 
@@ -37,6 +37,7 @@ const UserProfile = () => {
 
     if (token) getFreshProfile();
   }, [token, dispatch]);
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -45,7 +46,7 @@ const UserProfile = () => {
     setLoading(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.put('http://localhost:5000/api/auth/profile', { 
+      const { data } = await axios.put(`${API_URL}/api/auth/profile`, { 
         password: passwords.newPassword 
       }, config);
       

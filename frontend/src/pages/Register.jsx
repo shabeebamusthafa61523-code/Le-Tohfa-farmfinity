@@ -100,7 +100,7 @@ const Register = () => {
         password: formData.password
       };
 
-      const { data } = await axios.post(`http://localhost:5000/api/auth/register`, submissionData);
+      const { data } = await axios.post(`${API_URL}/api/auth/register`, submissionData);
 
       if (data) {
         toast.success("Registration successful! Please sign in.");

@@ -34,7 +34,7 @@ const AdminBookings = () => {
   
   // 1. Pull 'user' from Redux to get the logged-in admin's name
   const { token, user } = useSelector((state) => state.auth);
-  const API_URL = 'http://localhost:5000/api/bookings';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/bookings';
 
   const [formData, setFormData] = useState({
     guestName: '', guestPhone: '', guestPlace: '',

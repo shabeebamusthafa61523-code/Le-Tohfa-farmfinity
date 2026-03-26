@@ -17,7 +17,9 @@ const AdminStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/admin/stats-summary', {
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+        const { data } = await axios.get(`${API_URL}/api/admin/stats-summary`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         setStats(data);

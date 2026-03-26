@@ -12,7 +12,7 @@ const AdminCalendar = () => {
   const [actionLoading, setActionLoading] = useState(false);
   
   const { token } = useSelector((state) => state.auth);
-  const API_URL = 'http://localhost:5000/api/bookings';
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/bookings";
 
   useEffect(() => { fetchSchedule(); }, [currentDate]);
 

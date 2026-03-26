@@ -34,8 +34,8 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
         const userInfo = JSON.parse(localStorage.getItem('userInfo'));
         const token = userInfo?.token;
         if (!token) return;
-
-        const { data } = await axios.get('http://localhost:5000/api/bookings/booked-dates', {
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+        const { data } = await axios.get(`${API_URL}/api/bookings/booked-dates`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setBookings(Array.isArray(data) ? data : data.allBookings || []);
