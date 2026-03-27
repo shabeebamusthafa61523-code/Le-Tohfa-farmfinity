@@ -105,70 +105,29 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @desc    Forgot Password - Send Reset Link
 // @route   POST /api/auth/forgot-password
 // @desc    Professional Reset with OTP Simulation
-const sendEmail = require('../utils/sendEmail');
+// @desc    Simple Password Reset (Verify Email + Phone)
+// @route   POST /api/auth/reset-password-simple
+const resetPasswordSimple = asyncHandler(async (req, res) => {
+  const { email, phone, newPassword } = req.body;
 
-// @desc    Step 1: Send OTP to Email
-const sendOTP = async (req, res) => {
-  const { email } = req.body;
+  // 1. Find user who matches BOTH email and phone
+  const user = await User.findOne({ email, phone });
 
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    // 1. Generate 4-digit OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    
-    // 2. Save OTP and Expiry (10 mins) to User model
-    user.resetOTP = otp;
-    user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
-    await user.save();
-
-    // 3. Send the Email
-    const htmlMessage = `
-      <div style="font-family: serif; border: 1px solid #e0e7e0; padding: 20px; border-radius: 15px;">
-        <h2 style="color: #2d3a2d; font-style: italic;">Le'Tohfa Security</h2>
-        <p>Your verification code for password reset is:</p>
-        <h1 style="color: #8ba88b; letter-spacing: 5px;">${otp}</h1>
-        <p style="font-size: 12px; color: #999;">This code expires in 10 minutes.</p>
-      </div>
-    `;
-
-    await sendEmail({
-      email: user.email,
-      subject: "Your Le'Tohfa Verification Code",
-      html: htmlMessage,
-    });
-
-    res.status(200).json({ success: true, message: "OTP sent to email" });
-  } catch (error) {
-    res.status(500).json({ message: "Email could not be sent" });
+  if (!user) {
+    res.status(404);
+    throw new Error('Verification failed: Email and Phone do not match our records.');
   }
-};
 
-// @desc    Step 2: Verify OTP and Reset Password
-const resetPasswordWithOTP = async (req, res) => {
-  const { email, otp, newPassword } = req.body;
+  // 2. Update the password
+  user.password = newPassword; 
+  await user.save();
 
-  try {
-    const user = await User.findOne({ 
-      email, 
-      resetOTP: otp, 
-      resetOTPExpire: { $gt: Date.now() } 
-    });
+  res.status(200).json({
+    success: true,
+    message: "Identity verified. Password updated successfully."
+  });
+});
 
-    if (!user) return res.status(400).json({ message: "Invalid or expired OTP" });
-
-    // Update password and clear OTP fields
-    user.password = newPassword;
-    user.resetOTP = undefined;
-    user.resetOTPExpire = undefined;
-    await user.save();
-
-    res.status(200).json({ success: true, message: "Password updated successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
 // @desc    Get all users (Admin only)
 const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select('-password').sort({ createdAt: -1 });
@@ -221,7 +180,6 @@ module.exports = {
   getUsers, 
   deleteUser, 
   updateUserProfile, 
-  resetPasswordWithOTP ,
+  resetPasswordSimple ,
   getUserProfile,
-  sendOTP
 };

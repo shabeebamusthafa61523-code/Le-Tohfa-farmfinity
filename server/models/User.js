@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
 resetPasswordToken: String,
   resetPasswordExpire: Date,
+  resetOTP: String,
+  resetOTPExpire: Date,
 // Add this to your existing User schema in models/User.js
 role: {
   type: String,
