@@ -27,8 +27,8 @@ const Checkout = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // Updated to use absolute path to prevent 404/401 on frontend port
-        const { data } = await axios.get(`${API_URL}/settings`);
+        // Fix: Added /api prefix to match backend routing
+        const { data } = await axios.get(`${API_URL}/api/settings`);
         setSettings(data);
       } catch (err) {
         console.error("Failed to load settings", err);
@@ -101,13 +101,24 @@ const Checkout = () => {
   const handleRazorpayPayment = async () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
     
-    if (!token) return toast.error("Please log in to continue.");
+    // Safety: Ensure token is cleaned of extra quotes and literal "undefined" strings
+    const activeToken = token || localStorage.getItem('token');
+    const cleanToken = (activeToken && activeToken !== 'undefined' && activeToken !== 'null') 
+      ? activeToken.replace(/"/g, '') 
+      : null;
+
+    if (!cleanToken) return toast.error("Please log in again to continue.");
     if (!rzpKey || !window.Razorpay) return toast.error("Payment system offline.");
 
     setLoading(true);
 
     try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const config = { 
+        headers: { 
+          Authorization: `Bearer ${cleanToken}`,
+          'Content-Type': 'application/json'
+        } 
+      };
 
       // Step 1: Create the Booking in DB
       const { data: booking } = await axios.post(`${API_URL}/api/order/create`, {

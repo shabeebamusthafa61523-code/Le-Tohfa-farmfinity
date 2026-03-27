@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
 import "./BookingCalendar.css";
 
-// Fallback settings in case the admin settings fail to load or are empty
 const DEFAULT_PLAN_SETTINGS = {
   Staycation: { base: 15000, maxGuests: 20, extra: 200, in: "15:00", out: "12:00", nextDay: true },
   Daycation: { base: 15000, maxGuests: 20, extra: 100, in: "09:00", out: "21:00", nextDay: false },
@@ -18,8 +17,10 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [guestCount, setGuestCount] = useState(20);
   const [bookings, setBookings] = useState([]);
+  
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // 1. Resolve Plan Settings (Admin Data > Default Fallback)
+  // 1. Resolve Plan Settings
   const currentPlan = useMemo(() => {
     if (settings?.plans && settings.plans[activePlan]) {
       return settings.plans[activePlan];
@@ -27,28 +28,37 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
     return DEFAULT_PLAN_SETTINGS[activePlan];
   }, [settings, activePlan]);
 
-  // 2. Fetch Occupied Dates
+  // 2. Fetch Occupied Dates (Fixed Auth Logic)
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-        const token = userInfo?.token;
-        if (!token) return;
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+        // Try getting token from userInfo OR direct token key
+        const savedUser = localStorage.getItem('userInfo');
+        const userInfo = savedUser ? JSON.parse(savedUser) : null;
+        const token = userInfo?.token || localStorage.getItem('token');
+
+        if (!token || token === 'undefined') {
+          console.warn("Calendar: No valid token found, skipping booked-dates fetch.");
+          return;
+        }
+
         const { data } = await axios.get(`${API_URL}/api/bookings/booked-dates`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setBookings(Array.isArray(data) ? data : data.allBookings || []);
+
+        // Ensure we handle different backend response structures
+        const fetchedData = Array.isArray(data) ? data : (data.allBookings || []);
+        setBookings(fetchedData);
       } catch (err) {
-        console.error("Fetch Error:", err);
+        console.error("Calendar Sync Error:", err);
       }
     };
     fetchBookings();
-  }, []);
+  }, [API_URL]);
 
-  // 3. Tile Status Logic (Handles overlapping Check-ins/Outs)
+  // 3. Tile Status Logic
   const getTileStatus = (dateObj) => {
-    const dateStr = dateObj.toLocaleDateString('en-CA');
+    const dateStr = dateObj.toLocaleDateString('en-CA'); // YYYY-MM-DD
     const potIn = new Date(`${dateStr}T${currentPlan.in}`);
     let outD = new Date(potIn);
     if (currentPlan.nextDay) outD.setDate(outD.getDate() + 1);
@@ -65,12 +75,12 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
     return `${conflict.plan?.toLowerCase() || 'staycation'}-booked booked-tile`;
   };
 
-  // 4. Dynamic Pricing Calculation
+  // 4. Calculations
   const totalPrice = useMemo(() => {
-    const { base, maxGuests, extra } = currentPlan;
-    const basePrice = Number(base);
-    const extraPrice = Number(extra);
-    return guestCount <= maxGuests ? basePrice : basePrice + (guestCount - maxGuests) * extraPrice;
+    const base = Number(currentPlan.base) || 0;
+    const maxGuests = Number(currentPlan.maxGuests) || 0;
+    const extra = Number(currentPlan.extra) || 0;
+    return guestCount <= maxGuests ? base : base + (guestCount - maxGuests) * extra;
   }, [guestCount, currentPlan]);
 
   const checkOutDate = useMemo(() => {
@@ -79,9 +89,10 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
     return d;
   }, [selectedDate, currentPlan]);
 
-  // 5. Navigation to Checkout
+  // 5. Checkout Navigation
   const handleConfirmNow = () => {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    const savedUser = localStorage.getItem('userInfo');
+    const userInfo = savedUser ? JSON.parse(savedUser) : null;
     
     const formData = {
       guestName: userInfo?.name || "Guest",
@@ -91,17 +102,15 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
       checkOut: new Date(`${checkOutDate.toLocaleDateString('en-CA')}T${currentPlan.out}`),
       totalPrice: totalPrice,
       guestCount: guestCount,
-      advanceAmount: settings?.advanceAmount || 5000 // Sync advance from admin
+      advanceAmount: settings?.advanceAmount || 5000 
     };
 
     navigate('/checkout', { state: { formData } });
   };
 
-  // 6. DYNAMIC WHATSAPP REDIRECT
   const handleWhatsApp = () => {
-    // Uses the number saved in Admin Settings
     const whatsappNum = settings?.whatsappNumber || "918590653062"; 
-    const message = `Hello! I'd like to book a ${activePlan} on ${selectedDate.toLocaleDateString('en-GB')}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString()}`;
+    const message = `Hello! I'd like to book a ${activePlan} on ${selectedDate.toLocaleDateString('en-GB')}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString('en-IN')}`;
     window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -109,7 +118,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
     <div className="grid lg:grid-cols-12 gap-8 p-4 bg-white/50 rounded-[3rem]">
       {/* Calendar Section */}
       <div className="lg:col-span-7">
-        <h2 className="text-4xl font-serif italic text-[#2d3a2d] mb-2">Check Availability</h2>
+        <h2 className="text-3xl md:text-4xl font-serif italic text-[#2d3a2d] mb-2">Check Availability</h2>
         <p className="text-gray-400 text-sm mb-6">Real-time availability for {activePlan} stays.</p>
         
         <div className="premium-calendar-v2">
@@ -121,45 +130,50 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
             tileClassName={({date}) => getTileStatus(date)}
           />
           
-          <div className="legend-bar mt-6 flex flex-wrap gap-4">
-            <div className="legend-item"><div className="dot bg-[#e6f7eb] border border-[#dcfce7]"/> Available</div>
-            <div className="legend-item"><div className="dot bg-[#343d33]"/> Selected</div>
-            <div className="legend-item"><div className="dot bg-red-100 border border-red-200"/> Blocked</div>
+          <div className="legend-bar mt-8 flex flex-wrap gap-6 border-t border-gray-100 pt-6">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <div className="w-3 h-3 rounded-full bg-[#f4f7f4] border border-gray-100"/> Available
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              <div className="w-3 h-3 rounded-full bg-red-50 border border-red-100"/> Blocked
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Summary Card Section */}
-      <div className="lg:col-span-5 pt-4">
-        <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-100 space-y-6 relative overflow-hidden">
-          
+      {/* Summary Card */}
+      <div className="lg:col-span-5">
+        <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-gray-200/50 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8ba88b] block mb-1">Experience</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8ba88b] block mb-1">Reservation</span>
               <h3 className="text-2xl font-serif italic text-[#2d3a2d]">{activePlan}</h3>
             </div>
-            <div className="bg-[#f4f7f4] p-3 rounded-2xl">
-              {activePlan === "Staycation" ? <CalIcon className="text-[#8ba88b]" size={20}/> : 
-               activePlan === "Daycation" ? <Clock className="text-[#8ba88b]" size={20}/> : 
-               <MessageCircle className="text-[#8ba88b]" size={20}/>}
+            <div className="bg-[#f4f7f4] p-3 rounded-2xl text-[#8ba88b]">
+              {activePlan === "Staycation" ? <CalIcon size={20}/> : <Clock size={20}/>}
             </div>
           </div>
 
-          <div className="space-y-3 bg-gray-50/50 p-5 rounded-2xl">
-            <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-              <span>Check-In</span>
-              <span className="text-[#2d3a2d] font-sans">{selectedDate.toLocaleDateString('en-GB')} • {currentPlan.in}</span>
+          <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+            <div>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-In</p>
+              <p className="text-xs font-semibold text-[#2d3a2d]">{selectedDate.toLocaleDateString('en-GB')}</p>
+              <p className="text-[10px] text-gray-400">{currentPlan.in}</p>
             </div>
-            <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-              <span>Check-Out</span>
-              <span className="text-[#2d3a2d] font-sans">{checkOutDate.toLocaleDateString('en-GB')} • {currentPlan.out}</span>
+            <div className="text-right border-l border-gray-200 pl-4">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-Out</p>
+              <p className="text-xs font-semibold text-[#2d3a2d]">{checkOutDate.toLocaleDateString('en-GB')}</p>
+              <p className="text-[10px] text-gray-400">{currentPlan.out}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex justify-between items-center px-1">
-              <span className="font-bold text-sm text-[#2d3a2d]">Total Guests</span>
-              <span className="bg-[#2d3a2d] text-white px-3 py-1 rounded-full text-[10px] font-bold">{guestCount} Guests</span>
+              <span className="font-bold text-xs text-[#2d3a2d] uppercase tracking-wider">Guest Count</span>
+              <span className="bg-[#2d3a2d] text-white px-3 py-1 rounded-full text-[10px] font-bold">{guestCount}</span>
             </div>
             <input 
               type="range" 
@@ -167,36 +181,32 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
               max={Number(currentPlan.maxGuests) + 20} 
               value={guestCount} 
               onChange={e => setGuestCount(Number(e.target.value))} 
-              className="w-full h-1 bg-gray-100 rounded-lg appearance-none accent-[#2d3a2d]" 
+              className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none accent-[#8ba88b] cursor-pointer" 
             />
           </div>
 
-          <div className="bg-[#2d3a2d] p-8 rounded-[2rem] text-center text-white relative shadow-inner">
-            <p className="text-[9px] uppercase opacity-40 tracking-[0.3em] mb-1">Estimated Total</p>
-            <div className="text-4xl font-serif italic tracking-tight">₹{totalPrice.toLocaleString()}</div>
+          <div className="bg-[#2d3a2d] p-8 rounded-[2rem] text-center text-white">
+            <p className="text-[9px] uppercase opacity-40 tracking-[0.3em] mb-1">Experience Total</p>
+            <div className="text-4xl font-serif italic">₹{totalPrice.toLocaleString('en-IN')}</div>
           </div>
 
-          <div className="space-y-3 pt-2">
+          <div className="space-y-3">
             <button 
               onClick={handleConfirmNow}
               className="group w-full bg-[#8ba88b] text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-[#7a997a] transition-all shadow-lg active:scale-95"
             >
-              <span className="font-serif italic text-xl">Confirm Now</span>
+              <span className="font-serif italic text-xl">Confirm Booking</span>
               <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button 
               onClick={handleWhatsApp}
-              className="w-full bg-white border border-green-400 text-[#2d3a2d] py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all shadow-sm"
+              className="w-full bg-white border border-gray-100 text-[#2d3a2d] py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all"
             >
               <MessageCircle size={18} className="text-green-500"/> 
               <span className="text-sm">Inquire on WhatsApp</span>
             </button>
           </div>
-
-          <p className="text-[9px] text-center text-gray-300 uppercase tracking-widest flex items-center justify-center gap-2">
-            <ShieldCheck size={12}/> Instant confirmation & Secure Payment
-          </p>
         </div>
       </div>
     </div>

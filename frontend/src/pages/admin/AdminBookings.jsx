@@ -34,7 +34,7 @@ const AdminBookings = () => {
   
   // 1. Pull 'user' from Redux to get the logged-in admin's name
   const { token, user } = useSelector((state) => state.auth);
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/bookings';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const [formData, setFormData] = useState({
     guestName: '', guestPhone: '', guestPlace: '',
@@ -49,21 +49,20 @@ const AdminBookings = () => {
   }, [token]);
 
   const fetchData = async () => {
-    try {
-        setLoading(true);
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        const { data } = await axios.get(API_URL, config);
-        
-        // Ensure we always set an array, even if the backend sends something else
-        setBookings(Array.isArray(data) ? data : []); 
-    } catch (error) {
-        console.error("Fetch Error:", error);
-        toast.error("Failed to fetch bookings");
-        setBookings([]); // Set to empty array so the UI doesn't crash
-    } finally {
-        setLoading(false);
-    }
+  try {
+    setLoading(true);
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    // Make sure this endpoint is correct!
+    const { data } = await axios.get(`${API_URL}/api/bookings`, config);
+    setBookings(Array.isArray(data) ? data : (data.bookings || [])); 
+  } catch (error) {
+    toast.error("Connection failed. Please check your internet.");
+    setBookings([]);
+  } finally {
+    setLoading(false);
+  }
 };
+
   const isDateConflict = (dateStr) => {
     const times = PLAN_TIMES[formData.plan];
     const potentialIn = new Date(`${dateStr}T${times.in}`);
@@ -95,7 +94,7 @@ const handleCreateSubmit = async (e) => {
       bookedBy: user?.name // This sends "admin3" or the "User Name" to the DB
     };
 
-    await axios.post(`${API_URL}/admin-book-manual`, payload, config);
+    await axios.post(`${API_URL}/api/bookings/admin-book-manual`, payload, config);
     toast.success(`Booking recorded by ${bookerName}`);
     
     setIsCreateModalOpen(false);
@@ -105,6 +104,7 @@ const handleCreateSubmit = async (e) => {
     toast.error("Error creating booking");
   }
 };
+
   const resetForm = () => {
     setFormData({ 
       guestName: '', guestPhone: '', guestPlace: '', 
@@ -236,7 +236,6 @@ const filteredBookings = (bookings || []).filter(b => {
     <p className="text-[10px] text-[#8ba88b] font-medium flex items-center gap-1">
       <UserCheck size={12} className="text-[#8ba88b]" />
       <span>Account:</span>
-      {/* This renders "admin3", "Nyha", or whatever name is in the DB */}
       <span className="text-gray-600 font-bold capitalize">
         {b.bookedBy || "Website/Direct"}
       </span>
@@ -430,7 +429,6 @@ const filteredBookings = (bookings || []).filter(b => {
                     <p className="text-[9px] font-bold text-[#8ba88b] uppercase mb-1">Advance</p>
                     <input type="number" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full text-[#2d3a2d]" value={selectedBooking.advancePaid} onChange={(e) => setSelectedBooking({...selectedBooking, advancePaid: e.target.value})} />
                   </div>
-                  {/* 4. SHOW ADMIN NAME IN DETAILS MODAL */}
                   <div className="bg-gray-50 p-4 rounded-[2rem]">
                     <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Booked By</p>
                     <p className="text-sm font-bold text-[#2d3a2d] truncate capitalize">{selectedBooking.bookedBy || 'Direct'}</p>
