@@ -11,7 +11,7 @@ export default defineConfig({
   // ✅ Fix build entry issue for Vercel
   build: {
     rollupOptions: {
-      input: '/index.html',
+      input: 'index.html',
     },
   },
 
