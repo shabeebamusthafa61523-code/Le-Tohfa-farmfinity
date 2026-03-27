@@ -12,16 +12,23 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { token, user } = useSelector((state) => state.auth);
   const [loading, setLoading] = useState(false);
-
-  // --- NEW: DYNAMIC SETTINGS STATE ---
   const [settings, setSettings] = useState(null);
-  const ADVANCE_AMOUNT = settings?.advanceAmount || 3000; // Fallback to 3000 if loading
+
+  // --- CONFIGURATION ---
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const ADVANCE_AMOUNT = settings?.advanceAmount || 3000;
+
+  const [guestDetails, setGuestDetails] = useState({
+    name: state?.formData?.guestName || user?.name || "",
+    phone: state?.formData?.guestPhone || user?.phone || ""
+  });
+  const [isCustomGuest, setIsCustomGuest] = useState(false);
 
   useEffect(() => {
-    // Fetch global settings on mount
     const fetchSettings = async () => {
       try {
-        const { data } = await axios.get('/api/settings');
+        // Updated to use absolute path to prevent 404/401 on frontend port
+        const { data } = await axios.get(`${API_URL}/settings`);
         setSettings(data);
       } catch (err) {
         console.error("Failed to load settings", err);
@@ -33,7 +40,7 @@ const Checkout = () => {
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     document.body.appendChild(script);
-  }, []);
+  }, [API_URL]);
 
   if (!state || !state.formData) {
     return <div className="pt-40 text-center font-serif italic text-gray-500">No booking details found.</div>;
@@ -42,7 +49,23 @@ const Checkout = () => {
   const { formData } = state;
   const balanceDueAtResort = formData.totalPrice - ADVANCE_AMOUNT;
 
-  // --- INVOICE GENERATOR ---
+  // --- UI HELPERS ---
+  const showConfirmationToast = () => {
+    toast.custom((t) => (
+      <div className={`${t.visible ? 'animate-in fade-in zoom-in' : 'animate-out fade-out zoom-out'} max-w-md w-full bg-white shadow-2xl rounded-[2.5rem] p-6 border-b-8 border-[#8ba88b]`}>
+        <div className="flex items-start">
+          <div className="bg-[#8ba88b]/10 p-3 rounded-full">
+            <CheckCircle className="h-10 w-10 text-[#8ba88b]" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-bold text-[#2d3a2d] uppercase tracking-widest">Journey Confirmed!</p>
+            <p className="mt-1 text-xs text-gray-500 italic">Your sanctuary is ready. Your invoice is downloading.</p>
+          </div>
+        </div>
+      </div>
+    ), { duration: 5000 });
+  };
+
   const generateInvoice = (bookingId) => {
     try {
       const doc = new jsPDF();
@@ -51,11 +74,6 @@ const Checkout = () => {
       doc.setTextColor(45, 58, 45); 
       doc.text("Le'Tohfa Journeys", 105, 20, { align: 'center' });
       
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text("Official Booking Confirmation & Invoice", 105, 28, { align: 'center' });
-
       autoTable(doc, {
         startY: 40,
         head: [['Description', 'Details']],
@@ -65,78 +83,41 @@ const Checkout = () => {
           ['Phone Number', guestDetails.phone],
           ['Plan Selected', formData.plan],
           ['Check-In Date', new Date(formData.checkIn).toLocaleDateString('en-GB')],
-          ['Total Guests', `${formData.guestCount} Persons`],
           ['Total Package Price', `INR ${formData.totalPrice.toLocaleString()}`],
-          ['Advance Paid (Online)', `INR ${ADVANCE_AMOUNT.toLocaleString()}`],
+          ['Advance Paid', `INR ${ADVANCE_AMOUNT.toLocaleString()}`],
           ['Balance Due at Resort', `INR ${balanceDueAtResort.toLocaleString()}`],
         ],
         theme: 'striped',
         headStyles: { fillColor: [45, 58, 45] },
-        styles: { cellPadding: 5, fontSize: 10 }
       });
 
-      doc.setFontSize(9);
-      doc.text("Note: Please present this invoice at the resort during check-in.", 14, doc.lastAutoTable.finalY + 15);
-      doc.text("Generated on: " + new Date().toLocaleString(), 14, doc.lastAutoTable.finalY + 22);
-
-      doc.save(`LeTohfa_Booking_${bookingId.slice(-6)}.pdf`);
+      doc.save(`LeTohfa_Invoice_${bookingId.slice(-6)}.pdf`);
     } catch (error) {
-      console.error("PDF Generation Error:", error);
-      toast.error("Booking confirmed, but invoice download failed.");
+      console.error("PDF Error:", error);
     }
   };
 
-  const [isCustomGuest, setIsCustomGuest] = useState(false);
-  const [guestDetails, setGuestDetails] = useState({
-    name: state?.formData?.guestName || user?.name || "",
-    phone: state?.formData?.guestPhone || user?.phone || ""
-  });
-
-  const showConfirmationToast = () => {
-    toast.custom((t) => (
-      <div className={`${t.visible ? 'animate-in fade-in zoom-in duration-500' : 'animate-out fade-out zoom-out duration-500'} max-w-md w-full bg-white shadow-2xl rounded-[2.5rem] pointer-events-auto flex ring-1 ring-black ring-opacity-5 p-6 border-b-8 border-[#8ba88b]`}>
-        <div className="flex-1 w-0">
-          <div className="flex items-start">
-            <div className="flex-shrink-0 pt-0.5">
-              <div className="bg-[#8ba88b]/10 p-3 rounded-full">
-                <CheckCircle className="h-10 w-10 text-[#8ba88b]" />
-              </div>
-            </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-bold text-[#2d3a2d] uppercase tracking-widest">Journey Confirmed!</p>
-              <p className="mt-1 text-xs text-gray-500 italic">Your sanctuary is ready. We've downloaded your invoice for you.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    ), { duration: 5000 });
-  };
-
+  // --- CORE PAYMENT LOGIC ---
   const handleRazorpayPayment = async () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
     
-    if (!rzpKey) {
-      return toast.error("Payment configuration missing. Please check your .env file.");
-    }
-
-    if (!window.Razorpay) {
-      return toast.error("Razorpay SDK not loaded. Please refresh.");
-    }
+    if (!token) return toast.error("Please log in to continue.");
+    if (!rzpKey || !window.Razorpay) return toast.error("Payment system offline.");
 
     setLoading(true);
 
     try {
-      const { data: booking } = await axios.post('/api/bookings/website/create', {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+
+      // Step 1: Create the Booking in DB
+      const { data: booking } = await axios.post(`${API_URL}/api/order/create`, {
         ...formData,
         guestName: guestDetails.name,
         guestPhone: guestDetails.phone,
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      }, config);
 
-      const { data: order } = await axios.post(`/api/bookings/website/razorpay-order/${booking._id}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Step 2: Initialize Razorpay Order
+      const { data: order } = await axios.post(`${API_URL}/api/order/razorpay-order/${booking._id}`, {}, config);
 
       const options = {
         key: rzpKey, 
@@ -147,27 +128,28 @@ const Checkout = () => {
         order_id: order.id,
         handler: async (response) => {
           try {
-            const { data } = await axios.post("/api/bookings/website/verify-razorpay", { 
+            // Step 3: Verify Payment
+            const { data } = await axios.post(`${API_URL}/api/order/verify-razorpay`, { 
               ...response, 
               bookingId: booking._id 
-            }, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            }, config);
 
             if (data.success) {
+              showConfirmationToast();
+              generateInvoice(booking._id);
               navigate('/booking-success', { 
                 state: { 
                   booking: { 
                     ...booking, 
                     ...data.updatedBooking, 
                     advancePaid: ADVANCE_AMOUNT,
-                    remainingBalance: booking.totalPrice - ADVANCE_AMOUNT
+                    remainingBalance: balanceDueAtResort
                   } 
                 } 
               });
             }
           } catch (err) {
-            toast.error("Verification failed. Please check My Bookings.");
+            toast.error("Payment verification failed. Check 'My Bookings'.");
           }
         },
         prefill: {
@@ -183,7 +165,7 @@ const Checkout = () => {
       rzp.open();
 
     } catch (err) {
-      toast.error(err.response?.data?.message || "Booking failed.");
+      toast.error(err.response?.data?.message || "Booking initialization failed.");
       setLoading(false);
     }
   };
@@ -192,8 +174,9 @@ const Checkout = () => {
     <div className="min-h-screen bg-[#fcfcfc] pt-32 pb-20 px-6">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
         
+        {/* Left Section: Details */}
         <div className="lg:col-span-7 space-y-8">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-[#2d3a2d] transition-colors">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-[#2d3a2d]">
             <ChevronLeft size={18} /> <span className="text-xs font-bold uppercase tracking-widest">Back</span>
           </button>
           
@@ -215,7 +198,7 @@ const Checkout = () => {
             ) : (
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl text-sm">
                 <User size={20} className="text-[#8ba88b]" />
-                <div><p className="font-bold">{user?.name}</p><p className="opacity-50">{user?.phone}</p></div>
+                <div><p className="font-bold">{user?.name || "Guest"}</p><p className="opacity-50">{user?.phone || "No phone added"}</p></div>
               </div>
             )}
           </div>
@@ -237,6 +220,7 @@ const Checkout = () => {
           </div>
         </div>
 
+        {/* Right Section: Payment Card */}
         <div className="lg:col-span-5">
           <div className="bg-[#2d3a2d] rounded-[3rem] p-10 text-white shadow-2xl sticky top-32 space-y-8">
             <div className="space-y-1">
@@ -262,12 +246,11 @@ const Checkout = () => {
             <div className="text-center pt-4 border-t border-white/5 space-y-4">
               <p className="text-[10px] opacity-40 leading-relaxed italic">
                 This ₹{ADVANCE_AMOUNT.toLocaleString()} is a non-refundable security deposit to confirm your dates. 
-                The remaining balance is payable upon arrival at the resort.
+                Remaining balance payable upon arrival.
               </p>
               <a href={`https://wa.me/${settings?.whatsappNumber || '91XXXXXXXXXX'}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-[10px] text-[#8ba88b] font-bold uppercase tracking-widest">
                 <MessageCircle size={14} /> Contact Concierge
               </a>
-              <p className="text-[9px] opacity-20 uppercase tracking-[0.3em]">Invoice will be auto-generated</p>
             </div>
           </div>
         </div>

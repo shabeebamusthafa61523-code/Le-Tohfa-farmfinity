@@ -12,7 +12,7 @@ const MyBookings = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const { data } = await axios.get('/api/bookings/website/my-bookings');
+        const { data } = await axios.get('/api/order/my-bookings');
         setBookings(data);
       } catch (err) {
         toast.error("Failed to load your journeys");

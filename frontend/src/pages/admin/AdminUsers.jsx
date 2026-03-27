@@ -13,20 +13,23 @@ const AdminUsers = () => {
  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/auth";
 
   useEffect(() => {
+    console.log("Fetching users from:", API_URL);
     const fetchUsers = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${token}` } };
         const { data } = await axios.get(`${API_URL}/`, config);
-        setUsers(data);
+        
+        // Fix: Explicitly check if data is an array
+        setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
         toast.error(error.response?.data?.message || "Failed to load users");
+        setUsers([]); // Reset to empty array on error to prevent crash
       } finally {
         setLoading(false);
       }
     };
     if (token) fetchUsers();
   }, [token]);
-
   const handleDelete = async (userId) => {
     if (userId === currentUser?._id) return toast.error("You cannot remove yourself.");
     if (!window.confirm("Are you sure?")) return;
@@ -51,7 +54,8 @@ const AdminUsers = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-2">
       <AnimatePresence mode="popLayout">
-        {users.map((user) => (
+        {/* Fix: use (users || []) to safely map */}
+        {(users || []).map((user) => (
           <motion.div 
             layout
             initial={{ opacity: 0, y: 20 }}

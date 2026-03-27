@@ -50,16 +50,20 @@ const AdminBookings = () => {
 
   const fetchData = async () => {
     try {
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.get(API_URL, config);
-      setBookings(data);
+        setLoading(true);
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const { data } = await axios.get(API_URL, config);
+        
+        // Ensure we always set an array, even if the backend sends something else
+        setBookings(Array.isArray(data) ? data : []); 
     } catch (error) {
-      toast.error("Failed to fetch bookings");
+        console.error("Fetch Error:", error);
+        toast.error("Failed to fetch bookings");
+        setBookings([]); // Set to empty array so the UI doesn't crash
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
-
+};
   const isDateConflict = (dateStr) => {
     const times = PLAN_TIMES[formData.plan];
     const potentialIn = new Date(`${dateStr}T${times.in}`);
@@ -174,8 +178,8 @@ const handleCreateSubmit = async (e) => {
     }
   };
 
-  const filteredBookings = bookings.filter(b => {
-    const query = searchQuery.toLowerCase();
+const filteredBookings = (bookings || []).filter(b => {
+      const query = searchQuery.toLowerCase();
     const bookingDateStr = new Date(b.checkIn).toLocaleDateString('en-CA');
     const matchesText = b.guestName.toLowerCase().includes(query) || b.guestPhone.includes(query);
     const matchesDate = dateFilter ? bookingDateStr === dateFilter : true;

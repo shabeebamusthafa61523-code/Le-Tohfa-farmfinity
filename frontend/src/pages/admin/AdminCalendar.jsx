@@ -21,10 +21,14 @@ const AdminCalendar = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.get(API_URL, config);
-      setBookings(data);
-    } catch (error) { toast.error("Sync error"); } 
+      // Ensure data is actually an array before setting state
+      setBookings(Array.isArray(data) ? data : []); 
+    } catch (error) { 
+      toast.error("Sync error"); 
+      setBookings([]); // Fallback to empty array on error
+    } 
     finally { setLoading(false); }
-  };
+  };;
 
   const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
@@ -85,26 +89,46 @@ const AdminCalendar = () => {
           {Array.from({ length: firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1 }).map((_, i) => <div key={`empty-${i}`} className="h-20"></div>)}
           
           {Array.from({ length: daysInMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => {
-            const day = i + 1;
-            const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            
-            const guestIn = bookings.find(b => b.checkIn.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK");
-            const guestOut = bookings.find(b => b.checkOut.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK");
-            const isAdminBlocked = bookings.some(b => b.guestName === "ADMIN BLOCK" && dateStr >= b.checkIn.split('T')[0] && dateStr <= b.checkOut.split('T')[0]);
+    const day = i + 1;
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${year}-${month}-${dayStr}`;
+    
+    // SAFETY: Wrap bookings in (bookings || []) to prevent .find crashes
+    const safeBookings = bookings || [];
 
-            return (
-              <div key={day} className="flex flex-col items-center justify-center relative">
-                <button 
-                  onClick={() => handleDateAction(dateStr, isAdminBlocked ? 'unblock' : 'block')}
-                  className={`w-14 h-14 md:w-20 md:h-18 rounded-[1.5rem] flex flex-col items-center justify-center transition-all ${guestIn ? 'bg-[#2d3a2d] text-white' : isAdminBlocked ? 'bg-[#ff4d4d] text-white' : 'hover:bg-[#f0f4f0] text-[#2d3a2d]/60'}`}
-                >
-                  <span className="text-sm font-medium">{day}</span>
-                  {guestOut && !guestIn && <div className="absolute -top-1 -right-1 bg-[#8ba88b] text-white p-1 rounded-full"><LogOut size={8} /></div>}
-                  {isAdminBlocked && <div className="absolute -bottom-1 -right-1 bg-white text-[#ff4d4d] p-1 rounded-full shadow-md"><HardHat size={10} /></div>}
-                </button>
-              </div>
-            );
-          })}
+    const guestIn = safeBookings.find(b => b.checkIn?.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK");
+    const guestOut = safeBookings.find(b => b.checkOut?.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK");
+    const isAdminBlocked = safeBookings.some(b => 
+        b.guestName === "ADMIN BLOCK" && 
+        b.checkIn && 
+        dateStr >= b.checkIn.split('T')[0] && 
+        dateStr <= (b.checkOut ? b.checkOut.split('T')[0] : b.checkIn.split('T')[0])
+    );
+
+    return (
+        <div key={day} className="flex flex-col items-center justify-center relative">
+            <button 
+                onClick={() => handleDateAction(dateStr, isAdminBlocked ? 'unblock' : 'block')}
+                className={`w-14 h-14 md:w-20 md:h-18 rounded-[1.5rem] flex flex-col items-center justify-center transition-all 
+                ${guestIn ? 'bg-[#2d3a2d] text-white' : isAdminBlocked ? 'bg-[#ff4d4d] text-white' : 'hover:bg-[#f0f4f0] text-[#2d3a2d]/60'}`}
+            >
+                <span className="text-sm font-medium">{day}</span>
+                {guestOut && !guestIn && (
+                    <div className="absolute -top-1 -right-1 bg-[#8ba88b] text-white p-1 rounded-full border-2 border-white">
+                        <LogOut size={8} />
+                    </div>
+                )}
+                {isAdminBlocked && (
+                    <div className="absolute -bottom-1 -right-1 bg-white text-[#ff4d4d] p-1 rounded-full shadow-md">
+                        <HardHat size={10} />
+                    </div>
+                )}
+            </button>
+        </div>
+    );
+})}
         </div>
       </div>
     </div>
