@@ -86,7 +86,7 @@ const Register = () => {
 
     return true;
   };
-
+console.log("API URL:", API_URL);
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;

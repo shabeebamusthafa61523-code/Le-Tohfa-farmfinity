@@ -9,7 +9,10 @@ const {
   resetPasswordSimple ,getUserProfile,
 } = require('../controllers/authController');
 const { protect, admin } = require('../middleware/auth');
-
+// router.use(cors({
+//     origin: 'https://shabeebamusthafa61523-code-farmfini-rho.vercel.app',
+//     credentials: true
+// }));
 // Public
 router.post('/register', registerUser);
 router.post('/login', loginUser);

@@ -13,7 +13,7 @@ const getSettings = async (req, res) => {
 const updateSettings = async (req, res) => {
   try {
     const settings = await Settings.findOneAndUpdate({}, req.body, { 
-returnDocument: 'after',
+      new: true, 
       upsert: true 
     });
     res.json({ success: true, settings });

@@ -19,25 +19,39 @@ const ForgotPassword = () => {
     password: '' 
   });
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
   const handleSimpleReset = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Calling the simplified backend route
-      await axios.post(`${API_URL}/api/auth/forgot-password`, {
-        email: formData.email,
-        phone: formData.phone,
-        newPassword: formData.password
+      // 1. Clean the API URL (Same as Login.jsx)
+      const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+
+      // 2. Use the Aligned Axios configuration
+      await axios({
+        method: 'post',
+        url: `${API_URL}/api/auth/forgot-password`,
+        data: {
+          email: formData.email,
+          phone: formData.phone,
+          newPassword: formData.password
+        },
+        withCredentials: true, // Crucial for CORS handshake
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
       setIsSuccess(true);
       toast.success("Identity verified! Password updated.");
       setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Verification failed. Check your details.");
+      console.error("Reset Error:", error);
+      if (error.code === "ERR_NETWORK") {
+        toast.error("Network Error: Server might be waking up. Please try again.");
+      } else {
+        toast.error(error.response?.data?.message || "Verification failed. Check your details.");
+      }
     } finally {
       setLoading(false);
     }
@@ -68,14 +82,19 @@ const ForgotPassword = () => {
               onSubmit={handleSimpleReset} 
               className="space-y-5"
             >
-              {/* Email - Read Only */}
+              {/* Email - Allow manual entry if not pre-filled */}
               <div className="relative">
                 <Mail className="absolute left-4 top-4 text-[#8ba88b]" size={18} />
                 <input 
                   type="email" 
-                  readOnly
-                  className="w-full p-4 pl-12 rounded-2xl bg-gray-50 text-gray-500 border border-transparent italic cursor-not-allowed"
+                  placeholder="Registered Email"
+                  required
+                  className={`w-full p-4 pl-12 rounded-2xl border outline-none transition-all ${
+                    preFilledEmail ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-transparent' : 'bg-white border-[#e0e7e0] focus:ring-2 ring-[#8ba88b]/20'
+                  }`}
                   value={formData.email} 
+                  readOnly={!!preFilledEmail}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
                 />
               </div>
 
@@ -86,7 +105,7 @@ const ForgotPassword = () => {
                   <Phone className="absolute left-4 top-4 text-gray-300" size={18} />
                   <input 
                     type="tel" 
-                    placeholder="Enter your phone number" 
+                    placeholder="Enter phone number" 
                     required
                     className="w-full p-4 pl-12 bg-white border border-[#e0e7e0] rounded-2xl outline-none focus:ring-2 ring-[#8ba88b]/20 transition-all"
                     value={formData.phone} 
@@ -111,7 +130,11 @@ const ForgotPassword = () => {
                 </div>
               </div>
 
-              <button className="w-full bg-[#2d3a2d] text-white py-4 rounded-2xl font-serif italic text-lg flex items-center justify-center gap-2 shadow-lg hover:bg-[#3d4d3d] transition-all group">
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#2d3a2d] text-white py-4 rounded-2xl font-serif italic text-lg flex items-center justify-center gap-2 shadow-lg hover:bg-[#3d4d3d] transition-all group disabled:bg-gray-400"
+              >
                 {loading ? <Loader2 className="animate-spin" /> : (
                   <>
                     Verify & Reset <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
