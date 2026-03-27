@@ -8,12 +8,12 @@ export default defineConfig({
     tailwindcss(),
   ],
 
-  // ✅ Fix build entry issue for Vercel
-  build: {
-    rollupOptions: {
-      input: 'index.html',
-    },
-  },
+  // // ✅ Fix build entry issue for Vercel
+  // build: {
+  //   rollupOptions: {
+  //     input: 'index.html',
+  //   },
+  // },
 
   // ✅ Dev server proxy (works only locally)
   server: {
