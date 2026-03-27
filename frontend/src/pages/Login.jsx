@@ -4,7 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authSuccess } from '../redux/authSlice';
 import axios from 'axios';
-import toast from 'react-hot-toast'; // Add this line
+import toast from 'react-hot-toast';
+
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -23,19 +24,15 @@ const Login = () => {
 
       const response = await axios.post(`${API_URL}/api/auth/login`, formData);
 
-      // 1. Extract data clearly
       const { user, token } = response.data;
 
-      // 2. Update Redux (The slice handles the initial localStorage sync)
       dispatch(authSuccess({ user, token }));
 
-      // 3. Double-check localStorage manually for the Interceptor to pick up immediately
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
 
       toast.success(`Welcome back, ${user.name.split(' ')[0]}`);
       
-      // 4. Navigate only after everything is set
       navigate('/');
       
     } catch (err) {
@@ -45,12 +42,12 @@ const Login = () => {
       setLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen flex bg-[#f4f7f4] selection:bg-[#8ba88b]/30">
       
       {/* Left Side: Visual Experience */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#2d3a2d] relative items-center justify-center overflow-hidden">
-        {/* Fixed the image path syntax here */}
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-40 transition-transform duration-[10s] hover:scale-110"
           style={{ backgroundImage: "url('/assets/a.JPG')" }}
@@ -109,6 +106,7 @@ const Login = () => {
                 autoComplete="email"
                 className="w-full px-6 py-4 rounded-2xl bg-white border border-[#e0e7e0] focus:ring-2 focus:ring-[#8ba88b] focus:border-transparent outline-none transition-all placeholder:text-gray-300"
                 placeholder="hello@letohfa.com"
+                value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
             </div>
@@ -118,7 +116,12 @@ const Login = () => {
                 <label className="block text-[10px] uppercase tracking-[0.2em] text-[#2d3a2d] font-bold">
                   Password
                 </label>
-                <Link to="/forgot-password" size="sm" className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-[#8ba88b] transition-colors">
+                {/* Updated Link to pass state */}
+                <Link 
+                  to="/forgot-password" 
+                  state={{ email: formData.email }} 
+                  className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-[#8ba88b] transition-colors"
+                >
                   Forgot?
                 </Link>
               </div>
@@ -128,6 +131,7 @@ const Login = () => {
                 autoComplete="current-password"
                 className="w-full px-6 py-4 rounded-2xl bg-white border border-[#e0e7e0] focus:ring-2 focus:ring-[#8ba88b] focus:border-transparent outline-none transition-all placeholder:text-gray-300"
                 placeholder="••••••••"
+                value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
             </div>

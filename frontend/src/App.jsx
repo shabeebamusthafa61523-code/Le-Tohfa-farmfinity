@@ -23,6 +23,7 @@ import AdminStats from './pages/admin/AdminStats';
 import AdminCalendar from './pages/admin/AdminCalendar';
 import UserProfile from './pages/UserProfile';
 import BookingSuccess from './pages/BookingSuccess';
+import ForgotPassword from './pages/ForgotPassword';
 
 function App() {
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
@@ -91,6 +92,7 @@ function App() {
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/checkout" element={<Checkout settings={settings} />} />
           <Route path="/booking-success" element={<BookingSuccess />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* --- ADMIN ROUTES --- */}
           <Route path="/admin" element={<AdminLayout />}>

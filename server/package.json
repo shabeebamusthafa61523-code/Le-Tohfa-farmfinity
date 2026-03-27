@@ -7,6 +7,7 @@
     "express-async-handler": "^1.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.0",
+    "nodemailer": "^8.0.4",
     "razorpay": "^2.9.6"
   }
 }
