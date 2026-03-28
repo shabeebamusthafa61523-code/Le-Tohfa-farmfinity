@@ -25,6 +25,7 @@ app.use((req, res, next) => {
     const origin = req.headers.origin;
     const allowedOrigins = [
         "https://shabeebamusthafa61523-code-farmfini-rho.vercel.app",
+        "https://shabeebamusthafa61523-code-letoh-qa.vercel.app",
         "http://localhost:5173"
     ];
 
