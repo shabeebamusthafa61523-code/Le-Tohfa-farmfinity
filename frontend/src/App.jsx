@@ -46,23 +46,23 @@ function App() {
   }, []);
 
   // 2. MAINTENANCE MODE GUARD
-  if (settings?.isMaintenanceMode) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-center p-10">
-        <h1 className="font-serif italic text-5xl text-[#2d3a2d]">Peace is being restored...</h1>
-        <p className="text-gray-400 mt-6 max-w-md italic">
-          Le'Tohfa Journeys is currently undergoing a digital refresh. 
-          We'll be back online shortly.
-        </p>
-        <a 
-          href={`https://wa.me/${settings.whatsappNumber}`} 
-          className="mt-10 text-[#8ba88b] font-bold uppercase text-[10px] tracking-widest border-b border-[#8ba88b] pb-1"
-        >
-          Contact Concierge
-        </a>
-      </div>
-    );
-  }
+  // if (settings?.isMaintenanceMode) {
+  //   return (
+  //     <div className="h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-center p-10">
+  //       <h1 className="font-serif italic text-5xl text-[#2d3a2d]">Peace is being restored...</h1>
+  //       <p className="text-gray-400 mt-6 max-w-md italic">
+  //         Le'Tohfa Journeys is currently undergoing a digital refresh. 
+  //         We'll be back online shortly.
+  //       </p>
+  //       <a 
+  //         href={`https://wa.me/${settings.whatsappNumber}`} 
+  //         className="mt-10 text-[#8ba88b] font-bold uppercase text-[10px] tracking-widest border-b border-[#8ba88b] pb-1"
+  //       >
+  //         Contact Concierge
+  //       </a>
+  //     </div>
+  //   );
+  // }
 
   return (
     <Router>

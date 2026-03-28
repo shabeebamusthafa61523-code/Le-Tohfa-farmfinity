@@ -268,15 +268,23 @@ onClick={(e) => scrollToSection(e, link.href)} // Use the new function
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-2">
-                      {user?.role === 'admin' && (
-                        <Link to="/admin" className="flex items-center gap-3 p-4 bg-[#8ba88b]/10 text-[#8ba88b] rounded-2xl text-sm font-bold">
-                          <LayoutDashboard size={18}/> Admin Panel
-                        </Link>
-                      )}
-                      <button onClick={handleLogout} className="flex items-center gap-3 p-4 bg-red-500/10 text-red-400 rounded-2xl text-sm font-bold">
-                        <LogOut size={18}/> Logout
-                      </button>
-                    </div>
+                    {/* FIXED: Added My Profile and My Bookings to mobile drawer */}
+                    <Link to="/profile" className="flex items-center gap-3 p-4 bg-white/5 text-white/90 rounded-2xl text-sm font-bold">
+                      <User size={18}/> My Profile
+                    </Link>
+                    <Link to="/my-bookings" className="flex items-center gap-3 p-4 bg-white/5 text-white/90 rounded-2xl text-sm font-bold">
+                      <Briefcase size={18}/> My Bookings
+                    </Link>
+                    
+                    {user?.role === 'admin' && (
+                      <Link to="/admin" className="flex items-center gap-3 p-4 bg-[#8ba88b]/10 text-[#8ba88b] rounded-2xl text-sm font-bold">
+                        <LayoutDashboard size={18}/> Admin Panel
+                      </Link>
+                    )}
+                    <button onClick={handleLogout} className="flex items-center gap-3 p-4 bg-red-500/10 text-red-400 rounded-2xl text-sm font-bold">
+                      <LogOut size={18}/> Logout
+                    </button>
+                  </div>
                   </div>
                 </>
               ) : (

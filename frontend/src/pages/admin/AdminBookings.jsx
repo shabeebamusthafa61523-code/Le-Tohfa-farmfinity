@@ -32,7 +32,7 @@ const AdminBookings = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [dateFilter, setDateFilter] = useState('');
   
-  // 1. Pull 'user' from Redux to get the logged-in admin's name
+  // Auth & API Config
   const { token, user } = useSelector((state) => state.auth);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -49,19 +49,18 @@ const AdminBookings = () => {
   }, [token]);
 
   const fetchData = async () => {
-  try {
-    setLoading(true);
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    // Make sure this endpoint is correct!
-    const { data } = await axios.get(`${API_URL}/api/bookings`, config);
-    setBookings(Array.isArray(data) ? data : (data.bookings || [])); 
-  } catch (error) {
-    toast.error("Connection failed. Please check your internet.");
-    setBookings([]);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const { data } = await axios.get(`${API_URL}/api/bookings`, config);
+      setBookings(Array.isArray(data) ? data : (data.bookings || [])); 
+    } catch (error) {
+      toast.error("Connection failed. Please check your internet.");
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isDateConflict = (dateStr) => {
     const times = PLAN_TIMES[formData.plan];
@@ -80,30 +79,27 @@ const AdminBookings = () => {
     });
   };
 
-const handleCreateSubmit = async (e) => {
-  e.preventDefault();
-  
-  // This captures the name of the person currently logged in (Admin or User)
-  const bookerName = user?.name || "Guest User"; 
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    const bookerName = user?.name || "Admin"; 
 
-  try {
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-    
-    const payload = {
-      ...formData,
-      bookedBy: user?.name // This sends "admin3" or the "User Name" to the DB
-    };
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const payload = {
+        ...formData,
+        bookedBy: bookerName
+      };
 
-    await axios.post(`${API_URL}/api/bookings/admin-book-manual`, payload, config);
-    toast.success(`Booking recorded by ${bookerName}`);
-    
-    setIsCreateModalOpen(false);
-    resetForm();
-    fetchData();
-  } catch (error) {
-    toast.error("Error creating booking");
-  }
-};
+      await axios.post(`${API_URL}/api/bookings/admin-book-manual`, payload, config);
+      toast.success(`Booking recorded by ${bookerName}`);
+      
+      setIsCreateModalOpen(false);
+      resetForm();
+      fetchData();
+    } catch (error) {
+      toast.error("Error creating booking");
+    }
+  };
 
   const resetForm = () => {
     setFormData({ 
@@ -140,7 +136,16 @@ const handleCreateSubmit = async (e) => {
     e.preventDefault();
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, selectedBooking, config);
+      
+      // Ensure local state reflects the logic before sending
+      const updatedPayload = {
+        ...selectedBooking,
+        remainingBalance: selectedBooking.totalPrice - selectedBooking.advancePaid,
+        paymentStatus: (selectedBooking.totalPrice - selectedBooking.advancePaid) <= 0 ? 'Paid' : 'Partial'
+      };
+
+      const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, updatedPayload, config);
+      
       setBookings(bookings.map(b => b._id === data._id ? data : b));
       setSelectedBooking(data);
       setIsEditing(false);
@@ -154,9 +159,17 @@ const handleCreateSubmit = async (e) => {
     if (!window.confirm("Mark as fully paid?")) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, {
-        ...selectedBooking, advancePaid: selectedBooking.totalPrice
-      }, config);
+      
+      // Explicitly zero out the balance for the settlement call
+      const settlementData = {
+        ...selectedBooking,
+        advancePaid: selectedBooking.totalPrice,
+        remainingBalance: 0,
+        paymentStatus: 'Paid'
+      };
+
+      const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, settlementData, config);
+      
       setSelectedBooking(data);
       setBookings(bookings.map(b => b._id === data._id ? data : b));
       toast.success("Payment settled");
@@ -170,6 +183,7 @@ const handleCreateSubmit = async (e) => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.delete(`${API_URL}/api/bookings/${id}`, config);
+      
       setBookings(bookings.filter(b => b._id !== id));
       setIsDetailsModalOpen(false);
       toast.success("Booking removed");
@@ -178,8 +192,8 @@ const handleCreateSubmit = async (e) => {
     }
   };
 
-const filteredBookings = (bookings || []).filter(b => {
-      const query = searchQuery.toLowerCase();
+  const filteredBookings = (bookings || []).filter(b => {
+    const query = searchQuery.toLowerCase();
     const bookingDateStr = new Date(b.checkIn).toLocaleDateString('en-CA');
     const matchesText = b.guestName.toLowerCase().includes(query) || b.guestPhone.includes(query);
     const matchesDate = dateFilter ? bookingDateStr === dateFilter : true;
@@ -226,22 +240,17 @@ const filteredBookings = (bookings || []).filter(b => {
             <tbody className="divide-y divide-gray-50">
               {filteredBookings.map((b) => (
                 <tr key={b._id} className="group hover:bg-[#8ba88b]/5 transition-colors">
-                 <td className="px-8 py-6">
-  <p className="font-medium text-[#2d3a2d]">{b.guestName}</p>
-  <div className="flex flex-col gap-1 mt-1">
-    <span className="text-[9px] w-fit px-2 py-0.5 bg-gray-100 rounded-full font-bold uppercase text-gray-500">
-      {b.plan}
-    </span>
-    
-    <p className="text-[10px] text-[#8ba88b] font-medium flex items-center gap-1">
-      <UserCheck size={12} className="text-[#8ba88b]" />
-      <span>Account:</span>
-      <span className="text-gray-600 font-bold capitalize">
-        {b.bookedBy || "Website/Direct"}
-      </span>
-    </p>
-  </div>
-</td>
+                  <td className="px-8 py-6">
+                    <p className="font-medium text-[#2d3a2d]">{b.guestName}</p>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <span className="text-[9px] w-fit px-2 py-0.5 bg-gray-100 rounded-full font-bold uppercase text-gray-500">{b.plan}</span>
+                      <p className="text-[10px] text-[#8ba88b] font-medium flex items-center gap-1">
+                        <UserCheck size={12} />
+                        <span>Account:</span>
+                        <span className="text-gray-600 font-bold capitalize">{b.bookedBy || "Direct"}</span>
+                      </p>
+                    </div>
+                  </td>
                   <td className="px-8 py-6">
                     <p className="text-xs text-gray-600 font-medium">{new Date(b.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                     <p className="text-[10px] text-gray-400">to {new Date(b.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>

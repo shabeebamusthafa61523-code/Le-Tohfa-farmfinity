@@ -5,42 +5,36 @@ const User = require('../models/User');
 const protect = async (req, res, next) => {
   let token;
 
-  console.log("--- AUTH DEBUG START ---");
-  console.log("Headers:", req.headers.authorization);
-
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     try {
-      token = req.headers.authorization.split(" ")[1];
+      // 1. Extract and CLEAN the token
+      // This removes literal double quotes and whitespace that often creep in from LocalStorage
+      token = req.headers.authorization.split(" ")[1].replace(/[\\"]/g, '').trim();
       
-      // Check 1: Is the token actually there?
       if (!token || token === "undefined" || token === "null") {
-        console.error("DEBUG: Token string is literal 'undefined' or empty");
         return res.status(401).json({ message: "Malformed token string" });
       }
 
-      // Check 2: Verification
+      // 2. Verification
+      // Ensure process.env.JWT_SECRET is actually set in Render Environment Variables!
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("DEBUG: Decoded ID ->", decoded.id);
 
-      // Check 3: Database User
+      // 3. Database User
       req.user = await User.findById(decoded.id).select("-password");
       
       if (!req.user) {
-        console.error("DEBUG: User ID in token not found in Database");
         return res.status(401).json({ message: "User no longer exists" });
       }
 
-      console.log("--- AUTH SUCCESS ---");
       next();
     } catch (error) {
-      console.error("DEBUG: JWT Error ->", error.message); // THIS IS THE LINE YOU NEED
+      console.error("JWT Verification Failed:", error.message);
       return res.status(401).json({ 
         message: "Not authorized", 
-        error: error.message // Sending the real error to the frontend for now
+        error: error.message 
       });
     }
   } else {
-    console.error("DEBUG: No Bearer token in headers");
     return res.status(401).json({ message: "No token provided" });
   }
 };
