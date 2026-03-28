@@ -140,7 +140,7 @@ const handleCreateSubmit = async (e) => {
     e.preventDefault();
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.put(`${API_URL}/${selectedBooking._id}`, selectedBooking, config);
+      const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, selectedBooking, config);
       setBookings(bookings.map(b => b._id === data._id ? data : b));
       setSelectedBooking(data);
       setIsEditing(false);
@@ -154,7 +154,7 @@ const handleCreateSubmit = async (e) => {
     if (!window.confirm("Mark as fully paid?")) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const { data } = await axios.put(`${API_URL}/${selectedBooking._id}`, {
+      const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, {
         ...selectedBooking, advancePaid: selectedBooking.totalPrice
       }, config);
       setSelectedBooking(data);
@@ -169,7 +169,7 @@ const handleCreateSubmit = async (e) => {
     if (!window.confirm("Delete this booking permanently?")) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      await axios.delete(`${API_URL}/${id}`, config);
+      await axios.delete(`${API_URL}/api/bookings/${id}`, config);
       setBookings(bookings.filter(b => b._id !== id));
       setIsDetailsModalOpen(false);
       toast.success("Booking removed");
