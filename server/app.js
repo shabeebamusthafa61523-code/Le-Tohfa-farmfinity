@@ -17,7 +17,7 @@ connectDB();
 // 2. REFINED CORS CONFIGURATION
 const allowedOrigins = [
     "http://localhost:5173",
-    // "https://shabeebamusthafa61523-code-farmfini-rho.vercel.app",
+    "https://shabeebamusthafa61523-code-farmfini-rho.vercel.app",
     "https://shabeebamusthafa61523-code-letoh-qa.vercel.app"
 ];
 
