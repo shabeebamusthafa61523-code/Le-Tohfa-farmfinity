@@ -21,18 +21,27 @@ const allowedOrigins = [
   "https://shabeebamusthafa61523-code-farmfini-rho.vercel.app"
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        "https://shabeebamusthafa61523-code-farmfini-rho.vercel.app",
+        "http://localhost:5173"
+    ];
 
     if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
+        res.setHeader('Access-Control-Allow-Origin', origin);
     }
-  },
-  credentials: true,
-}));
+
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+
+    // FIX: Browsers need a 204 or 200 for OPTIONS to proceed to the POST request
+    if (req.method === 'OPTIONS') {
+        return res.status(204).send();
+    }
+    next();
+});
 
 // 3. Handle Preflight
 

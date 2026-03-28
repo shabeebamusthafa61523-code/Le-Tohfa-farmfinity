@@ -62,6 +62,7 @@ const scrollToSection = (e, href) => {
 
   // Close mobile menu when route changes
   useEffect(() => {
+    console.log("Current User Role:", user?.role);
     setIsMobileMenuOpen(false);
   }, [location]);
 
