@@ -62,32 +62,38 @@ const AdminBookings = () => {
     }
   };
 
-  const isDateConflict = (dateStr) => {
+ const isDateConflict = (dateStr) => {
+  if (!dateStr || !bookings.length) return false;
+
   const times = PLAN_TIMES[formData.plan];
   
-  // 1. Calculate the START time for the potential booking
-  const potentialIn = new Date(`${dateStr}T${times.in}`);
+  // Use a template literal to ensure we are creating a local-time object
+  const potIn = new Date(`${dateStr}T${times.in}:00`);
   
-  // 2. Calculate the END time (handle nextDay for Staycations)
-  let potentialOutDate = new Date(potentialIn);
+  let potOutDate = new Date(potIn);
   if (times.nextDay) {
-    potentialOutDate.setDate(potentialOutDate.getDate() + 1);
+    potOutDate.setDate(potOutDate.getDate() + 1);
   }
-  const outDateFormatted = potentialOutDate.toLocaleDateString('en-CA');
-  const potentialOut = new Date(`${outDateFormatted}T${times.out}`);
+  
+  // Re-format outDate to YYYY-MM-DD to avoid timezone bleeding
+  const outStr = potOutDate.toISOString().split('T')[0];
+  const potOut = new Date(`${outStr}T${times.out}:00`);
 
-  // 3. Compare against all existing bookings using the Overlap Formula
   return bookings.some(existing => {
-    const existingIn = new Date(existing.checkIn);
-    const existingOut = new Date(existing.checkOut);
-    
-    // (StartA < EndB) && (EndA > StartB)
-    return potentialIn < existingOut && potentialOut > existingIn;
+    // Ensure existing dates are treated as Date objects
+    const exIn = new Date(existing.checkIn);
+    const exOut = new Date(existing.checkOut);
+
+    // Use .getTime() for the most accurate "Local vs Vercel" comparison
+    return potIn.getTime() < exOut.getTime() && potOut.getTime() > exIn.getTime();
   });
 };
-
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    const dateOnly = formData.checkIn.split('T')[0];
+  if (isDateConflict(dateOnly)) {
+    return toast.error("Double booking detected! Please choose another date.");
+  }
     const bookerName = user?.name || "Admin"; 
 
     try {
