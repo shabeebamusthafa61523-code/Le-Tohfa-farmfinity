@@ -67,23 +67,11 @@ const today = formatDate(new Date());
 const isDateConflict = (dateStr) => {
   if (!dateStr || !bookings.length) return false;
 
-  const times = PLAN_TIMES[formData.plan];
-  const potIn = new Date(`${dateStr}T${times.in}:00`);
-  let potOut = new Date(potIn);
-  
-  if (times.nextDay) {
-    potOut.setDate(potOut.getDate() + 1);
-  }
-potOut = new Date(`${formatDate(potOut)}T${times.out}:00`);
   return bookings.some(existing => {
-    // Exclude the current booking if you're editing
     if (selectedBooking && existing._id === selectedBooking._id) return false;
 
-    const exIn = new Date(existing.checkIn).getTime();
-    const exOut = new Date(existing.checkOut).getTime();
-    
-    // Check if potential stay overlaps with existing stay
-    return potIn.getTime() < exOut && potOut.getTime() > exIn;
+    const exInDate = formatDate(new Date(existing.checkIn));
+    return dateStr === exInDate;
   });
 };
   const handleCreateSubmit = async (e) => {
