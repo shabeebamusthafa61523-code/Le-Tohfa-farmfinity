@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
-
+// ✅ ADD THIS HELPER AT TOP (below imports)
 // Business Logic for Booking Types
 const PLAN_TIMES = {
   Staycation: { in: "15:00", out: "12:00", nextDay: true },
@@ -61,26 +61,28 @@ const AdminBookings = () => {
       setLoading(false);
     }
   };
+// ✅ ADD THIS HELPER AT TOP (below imports)
+const formatDate = (date) => date.toISOString().split('T')[0];
 const isDateConflict = (dateStr) => {
   if (!dateStr || !bookings.length) return false;
 
   const times = PLAN_TIMES[formData.plan];
   const potIn = new Date(`${dateStr}T${times.in}:00`);
+
   let potOut = new Date(potIn);
-  
   if (times.nextDay) {
     potOut.setDate(potOut.getDate() + 1);
   }
-  potOut = new Date(`${potOut.toLocaleDateString('en-CA')}T${times.out}:00`);
+
+  const outDateStr = formatDate(potOut);
+  potOut = new Date(`${outDateStr}T${times.out}:00`);
 
   return bookings.some(existing => {
-    // Exclude the current booking if you're editing
     if (selectedBooking && existing._id === selectedBooking._id) return false;
 
     const exIn = new Date(existing.checkIn).getTime();
     const exOut = new Date(existing.checkOut).getTime();
-    
-    // Check if potential stay overlaps with existing stay
+
     return potIn.getTime() < exOut && potOut.getTime() > exIn;
   });
 };
@@ -128,24 +130,25 @@ const isDateConflict = (dateStr) => {
 
   const { firstDay, daysInMonth } = getDaysInMonth(currentMonth);
 
-  const handleDateClick = (day) => {
+ const handleDateClick = (day) => {
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
-  
-  // Use 'en-CA' to get YYYY-MM-DD format reliably
-  const dateStr = new Date(year, month, day).toLocaleDateString('en-CA');
+
+  const baseDate = new Date(year, month, day);
+  const dateStr = formatDate(baseDate);
+
   const times = PLAN_TIMES[formData.plan];
-  
-  const checkIn = `${dateStr}T${times.in}:00`; // Added :00 for ISO compliance
-  
-  let checkOutDate = new Date(year, month, day);
-  if (times.nextDay) { 
-    checkOutDate.setDate(checkOutDate.getDate() + 1); 
+
+  const checkIn = `${dateStr}T${times.in}:00`;
+
+  let checkOutDate = new Date(baseDate);
+  if (times.nextDay) {
+    checkOutDate.setDate(checkOutDate.getDate() + 1);
   }
-  
-  const outDateStr = checkOutDate.toLocaleDateString('en-CA');
+
+  const outDateStr = formatDate(checkOutDate);
   const checkOut = `${outDateStr}T${times.out}:00`;
-  
+
   setFormData({ ...formData, checkIn, checkOut });
 };
 
@@ -211,7 +214,7 @@ const isDateConflict = (dateStr) => {
 
   const filteredBookings = (bookings || []).filter(b => {
     const query = searchQuery.toLowerCase();
-    const bookingDateStr = new Date(b.checkIn).toLocaleDateString('en-CA');
+const bookingDateStr = b.checkIn.split('T')[0];
     const matchesText = b.guestName.toLowerCase().includes(query) || b.guestPhone.includes(query);
     const matchesDate = dateFilter ? bookingDateStr === dateFilter : true;
     return matchesText && matchesDate;
@@ -327,18 +330,29 @@ const isDateConflict = (dateStr) => {
                 <div className="col-span-2 space-y-4">
                   <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
                     <div className="flex justify-between items-center mb-4 px-2">
-                      <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft size={16}/></button>
+                      <button type="button" onClick={() => 
+  setCurrentMonth(prev => {
+    const newDate = new Date(prev);
+    newDate.setMonth(newDate.getMonth() - 1);
+    return newDate;
+  })
+} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft size={16}/></button>
                       <span className="text-sm font-bold uppercase tracking-widest text-[#2d3a2d]">{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                      <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><ChevronRight size={16}/></button>
+                      <button type="button" onClick={() => 
+  setCurrentMonth(prev => {
+    const newDate = new Date(prev);
+    newDate.setMonth(newDate.getMonth() + 1);
+    return newDate;
+  })
+} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><ChevronRight size={16}/></button>
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center">
                       {['M','T','W','T','F','S','S'].map(d => <span key={d} className="text-[10px] font-bold text-gray-300 mb-2">{d}</span>)}
                       {Array(firstDay).fill(0).map((_, i) => <div key={`empty-${i}`} />)}
                      {Array.from({ length: daysInMonth }).map((_, i) => {
   const day = i + 1;
-  const dateStr = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toLocaleDateString('en-CA'); 
-  const isConflict = isDateConflict(dateStr);
-  const isSelected = formData.checkIn.startsWith(dateStr);
+const dateStr = formatDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day));  const isConflict = isDateConflict(dateStr);
+const isSelected = formData.checkIn?.startsWith(dateStr);
   const isPast = dateStr < today;
 
   return (
