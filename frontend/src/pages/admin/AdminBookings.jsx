@@ -67,25 +67,27 @@ const AdminBookings = () => {
 
   const times = PLAN_TIMES[formData.plan];
   
-  // Use a template literal to ensure we are creating a local-time object
+  // 1. Create potential check-in (Local Time)
   const potIn = new Date(`${dateStr}T${times.in}:00`);
   
+  // 2. Create potential check-out (Local Time)
   let potOutDate = new Date(potIn);
   if (times.nextDay) {
     potOutDate.setDate(potOutDate.getDate() + 1);
   }
-  
-  // Re-format outDate to YYYY-MM-DD to avoid timezone bleeding
-  const outStr = potOutDate.toISOString().split('T')[0];
-  const potOut = new Date(`${outStr}T${times.out}:00`);
+  // Construct the string manually to avoid .toISOString() UTC shift
+  const outDatePart = potOutDate.toLocaleDateString('en-CA'); 
+  const potOut = new Date(`${outDatePart}T${times.out}:00`);
 
   return bookings.some(existing => {
-    // Ensure existing dates are treated as Date objects
-    const exIn = new Date(existing.checkIn);
-    const exOut = new Date(existing.checkOut);
+    // 3. Convert DB strings to numeric timestamps for absolute comparison
+    const exIn = new Date(existing.checkIn).getTime();
+    const exOut = new Date(existing.checkOut).getTime();
 
-    // Use .getTime() for the most accurate "Local vs Vercel" comparison
-    return potIn.getTime() < exOut.getTime() && potOut.getTime() > exIn.getTime();
+    // Standard Overlap Formula
+    const hasOverlap = potIn.getTime() < exOut && potOut.getTime() > exIn;
+    
+    return hasOverlap;
   });
 };
   const handleCreateSubmit = async (e) => {
@@ -133,17 +135,25 @@ const AdminBookings = () => {
   const { firstDay, daysInMonth } = getDaysInMonth(currentMonth);
 
   const handleDateClick = (day) => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const dateStr = new Date(year, month, day).toLocaleDateString('en-CA');
-    const times = PLAN_TIMES[formData.plan];
-    const checkIn = `${dateStr}T${times.in}`;
-    let checkOutDate = new Date(year, month, day);
-    if (times.nextDay) { checkOutDate.setDate(checkOutDate.getDate() + 1); }
-    const outDateStr = checkOutDate.toLocaleDateString('en-CA');
-    const checkOut = `${outDateStr}T${times.out}`;
-    setFormData({ ...formData, checkIn, checkOut });
-  };
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  
+  // Use 'en-CA' to get YYYY-MM-DD format reliably
+  const dateStr = new Date(year, month, day).toLocaleDateString('en-CA');
+  const times = PLAN_TIMES[formData.plan];
+  
+  const checkIn = `${dateStr}T${times.in}:00`; // Added :00 for ISO compliance
+  
+  let checkOutDate = new Date(year, month, day);
+  if (times.nextDay) { 
+    checkOutDate.setDate(checkOutDate.getDate() + 1); 
+  }
+  
+  const outDateStr = checkOutDate.toLocaleDateString('en-CA');
+  const checkOut = `${outDateStr}T${times.out}:00`;
+  
+  setFormData({ ...formData, checkIn, checkOut });
+};
 
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
