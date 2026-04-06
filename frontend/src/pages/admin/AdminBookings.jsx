@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, X, Wallet, WalletMinimal, Phone, MapPin, Users, 
-  Loader2, Sparkles, Edit3, Trash2, Save, 
+  Plus, X, Wallet, Phone, Loader2, Sparkles, Edit3, Trash2, Save, 
   CheckCircle2, Calendar, Search, MoreHorizontal, ChevronLeft, ChevronRight,
   UserCheck
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 
-// Business Logic for Booking Types
 const PLAN_TIMES = {
   Staycation: { in: "15:00", out: "12:00", nextDay: true },
   Daycation: { in: "09:00", out: "21:00", nextDay: false },
@@ -22,24 +20,21 @@ const AdminBookings = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  // Calendar State
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [dateFilter, setDateFilter] = useState('');
   
-  // Auth & API Config
   const { token, user } = useSelector((state) => state.auth);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const [formData, setFormData] = useState({
     guestName: '', guestPhone: '', guestPlace: '',
     checkIn: '', checkOut: '', totalPrice: 0,
-    advance: 0, plan: 'Staycation', guestCount: 1
+    advancePaid: 0, plan: 'Staycation', guestCount: 1
   });
 
   const today = new Date().toISOString().split('T')[0];
@@ -55,7 +50,7 @@ const AdminBookings = () => {
       const { data } = await axios.get(`${API_URL}/api/bookings`, config);
       setBookings(Array.isArray(data) ? data : (data.bookings || [])); 
     } catch (error) {
-      toast.error("Connection failed. Please check your internet.");
+      toast.error("Connection failed.");
       setBookings([]);
     } finally {
       setLoading(false);
@@ -66,11 +61,8 @@ const AdminBookings = () => {
     const times = PLAN_TIMES[formData.plan];
     const potentialIn = new Date(`${dateStr}T${times.in}`);
     let potentialOutDate = new Date(potentialIn);
-    if (times.nextDay) {
-      potentialOutDate.setDate(potentialOutDate.getDate() + 1);
-    }
-    const outDateStr = potentialOutDate.toLocaleDateString('en-CA');
-    const potentialOut = new Date(`${outDateStr}T${times.out}`);
+    if (times.nextDay) potentialOutDate.setDate(potentialOutDate.getDate() + 1);
+    const potentialOut = new Date(`${potentialOutDate.toLocaleDateString('en-CA')}T${times.out}`);
 
     return bookings.some(existing => {
       const existingIn = new Date(existing.checkIn);
@@ -81,18 +73,13 @@ const AdminBookings = () => {
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    const bookerName = user?.name || "Admin"; 
+    if (!formData.checkIn) return toast.error("Please select a date");
 
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const payload = {
-        ...formData,
-        bookedBy: bookerName
-      };
-
+      const payload = { ...formData, bookedBy: user?.name || "Admin" };
       await axios.post(`${API_URL}/api/bookings/admin-book-manual`, payload, config);
-      toast.success(`Booking recorded by ${bookerName}`);
-      
+      toast.success(`Booking recorded`);
       setIsCreateModalOpen(false);
       resetForm();
       fetchData();
@@ -105,7 +92,7 @@ const AdminBookings = () => {
     setFormData({ 
       guestName: '', guestPhone: '', guestPlace: '', 
       checkIn: '', checkOut: '', totalPrice: 0, 
-      advance: 0, plan: 'Staycation', guestCount: 1 
+      advancePaid: 0, plan: 'Staycation', guestCount: 1 
     });
   };
 
@@ -127,8 +114,7 @@ const AdminBookings = () => {
     const checkIn = `${dateStr}T${times.in}`;
     let checkOutDate = new Date(year, month, day);
     if (times.nextDay) { checkOutDate.setDate(checkOutDate.getDate() + 1); }
-    const outDateStr = checkOutDate.toLocaleDateString('en-CA');
-    const checkOut = `${outDateStr}T${times.out}`;
+    const checkOut = `${checkOutDate.toLocaleDateString('en-CA')}T${times.out}`;
     setFormData({ ...formData, checkIn, checkOut });
   };
 
@@ -136,16 +122,12 @@ const AdminBookings = () => {
     e.preventDefault();
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      
-      // Ensure local state reflects the logic before sending
       const updatedPayload = {
         ...selectedBooking,
         remainingBalance: selectedBooking.totalPrice - selectedBooking.advancePaid,
         paymentStatus: (selectedBooking.totalPrice - selectedBooking.advancePaid) <= 0 ? 'Paid' : 'Partial'
       };
-
       const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, updatedPayload, config);
-      
       setBookings(bookings.map(b => b._id === data._id ? data : b));
       setSelectedBooking(data);
       setIsEditing(false);
@@ -159,17 +141,13 @@ const AdminBookings = () => {
     if (!window.confirm("Mark as fully paid?")) return;
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      
-      // Explicitly zero out the balance for the settlement call
       const settlementData = {
         ...selectedBooking,
         advancePaid: selectedBooking.totalPrice,
         remainingBalance: 0,
         paymentStatus: 'Paid'
       };
-
       const { data } = await axios.put(`${API_URL}/api/bookings/${selectedBooking._id}`, settlementData, config);
-      
       setSelectedBooking(data);
       setBookings(bookings.map(b => b._id === data._id ? data : b));
       toast.success("Payment settled");
@@ -183,7 +161,6 @@ const AdminBookings = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.delete(`${API_URL}/api/bookings/${id}`, config);
-      
       setBookings(bookings.filter(b => b._id !== id));
       setIsDetailsModalOpen(false);
       toast.success("Booking removed");
@@ -200,11 +177,15 @@ const AdminBookings = () => {
     return matchesText && matchesDate;
   });
 
-  if (loading) return <div className="h-96 flex items-center justify-center"><Loader2 className="animate-spin text-[#8ba88b]" size={40} /></div>;
+  if (loading) return (
+    <div className="h-96 flex items-center justify-center">
+      <Loader2 className="animate-spin text-[#8ba88b]" size={40} />
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 px-4 md:px-0">
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="font-serif italic text-3xl text-[#2d3a2d]">Reservations</h1>
@@ -214,17 +195,29 @@ const AdminBookings = () => {
           <div className="relative flex-1 md:w-64 flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" placeholder="Name, Phone..." className="w-full pl-10 pr-4 py-3 bg-white border border-gray-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-[#8ba88b]/20" onChange={(e) => setSearchQuery(e.target.value)} />
+              <input 
+                type="text" 
+                placeholder="Name, Phone..." 
+                className="w-full pl-10 pr-4 py-3 bg-white border border-gray-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-[#8ba88b]/20" 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+              />
             </div>
-            <input type="date" className="hidden md:block px-4 py-3 bg-white border border-gray-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-[#8ba88b]/20 text-gray-400" onChange={(e) => setDateFilter(e.target.value)} />
+            <input 
+              type="date" 
+              className="hidden md:block px-4 py-3 bg-white border border-gray-100 rounded-full text-sm outline-none focus:ring-2 focus:ring-[#8ba88b]/20 text-gray-400" 
+              onChange={(e) => setDateFilter(e.target.value)} 
+            />
           </div>
-          <button onClick={() => setIsCreateModalOpen(true)} className="bg-[#2d3a2d] text-white p-3 md:px-6 md:py-3 rounded-full flex items-center gap-2 hover:bg-[#3d4d3d] transition-all shadow-lg">
+          <button 
+            onClick={() => setIsCreateModalOpen(true)} 
+            className="bg-[#2d3a2d] text-white p-3 md:px-6 md:py-3 rounded-full flex items-center gap-2 hover:bg-[#3d4d3d] transition-all shadow-lg"
+          >
             <Plus size={20} /> <span className="hidden md:inline font-serif italic">New Booking</span>
           </button>
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Table */}
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -246,7 +239,6 @@ const AdminBookings = () => {
                       <span className="text-[9px] w-fit px-2 py-0.5 bg-gray-100 rounded-full font-bold uppercase text-gray-500">{b.plan}</span>
                       <p className="text-[10px] text-[#8ba88b] font-medium flex items-center gap-1">
                         <UserCheck size={12} />
-                        <span>Account:</span>
                         <span className="text-gray-600 font-bold capitalize">{b.bookedBy || "Direct"}</span>
                       </p>
                     </div>
@@ -288,15 +280,15 @@ const AdminBookings = () => {
               <form onSubmit={handleCreateSubmit} className="grid grid-cols-2 gap-5">
                 <div className="col-span-2">
                   <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Guest Name</label>
-                  <input required className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Full Name" onChange={(e) => setFormData({...formData, guestName: e.target.value})} />
+                  <input required className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Full Name" value={formData.guestName} onChange={(e) => setFormData({...formData, guestName: e.target.value})} />
                 </div>
                 <div>
                   <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Phone</label>
-                  <input required className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Mobile" onChange={(e) => setFormData({...formData, guestPhone: e.target.value})} />
+                  <input required className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="Mobile" value={formData.guestPhone} onChange={(e) => setFormData({...formData, guestPhone: e.target.value})} />
                 </div>
                 <div>
                   <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">No. of Guests</label>
-                  <input required type="number" min="1" className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm outline-none" placeholder="2" onChange={(e) => setFormData({...formData, guestCount: Number(e.target.value)})} />
+                  <input required type="number" min="1" className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm outline-none" value={formData.guestCount} onChange={(e) => setFormData({...formData, guestCount: Number(e.target.value)})} />
                 </div>
                 <div className="col-span-2">
                   <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Select Plan</label>
@@ -319,7 +311,8 @@ const AdminBookings = () => {
                       {Array(firstDay).fill(0).map((_, i) => <div key={`empty-${i}`} />)}
                       {Array.from({ length: daysInMonth }).map((_, i) => {
                         const day = i + 1;
-                        const dateStr = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toLocaleDateString('en-CA'); 
+                        const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                        const dateStr = dateObj.toLocaleDateString('en-CA'); 
                         const isConflict = isDateConflict(dateStr);
                         const isSelected = formData.checkIn.startsWith(dateStr);
                         const isPast = dateStr < today;
@@ -370,17 +363,17 @@ const AdminBookings = () => {
 
                 <div>
                   <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Total Bill</label>
-                  <input type="number" className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm font-bold" placeholder="₹" onChange={(e) => setFormData({...formData, totalPrice: Number(e.target.value)})} />
+                  <input type="number" min="0" className="w-full mt-1 p-4 bg-gray-50 rounded-2xl text-sm font-bold" value={formData.totalPrice} onChange={(e) => setFormData({...formData, totalPrice: Number(e.target.value)})} />
                 </div>
                 <div>
                   <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Advance</label>
-                  <input type="number" className="w-full mt-1 p-4 bg-[#8ba88b]/10 rounded-2xl text-sm font-bold text-[#2d3a2d]" placeholder="₹" onChange={(e) => setFormData({...formData, advance: Number(e.target.value)})} />
+                  <input type="number" min="0" className="w-full mt-1 p-4 bg-[#8ba88b]/10 rounded-2xl text-sm font-bold text-[#2d3a2d]" value={formData.advancePaid} onChange={(e) => setFormData({...formData, advancePaid: Number(e.target.value)})} />
                 </div>
 
                 <div className="col-span-2 bg-[#2d3a2d] p-6 rounded-[2.5rem] flex justify-between items-center text-white shadow-xl">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] opacity-60">Pending Balance</p>
-                    <p className="text-3xl font-serif italic">₹{(formData.totalPrice - formData.advance).toLocaleString()}</p>
+                    <p className="text-3xl font-serif italic">₹{(formData.totalPrice - formData.advancePaid).toLocaleString()}</p>
                   </div>
                   <div className="p-4 bg-white/10 rounded-2xl"><Wallet size={24} /></div>
                 </div>
@@ -402,8 +395,8 @@ const AdminBookings = () => {
               <div className="flex justify-between mb-8">
                 <div>
                   <h2 className="font-serif italic text-3xl text-[#2d3a2d]">{isEditing ? "Modify Record" : "Reservation Detail"}</h2>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase ${selectedBooking.remainingBalance === 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
-                    {selectedBooking.remainingBalance === 0 ? 'Fully Paid' : `Owing ₹${selectedBooking.remainingBalance}`}
+                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase ${selectedBooking.remainingBalance <= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
+                    {selectedBooking.remainingBalance <= 0 ? 'Fully Paid' : `Owing ₹${selectedBooking.remainingBalance}`}
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -417,26 +410,26 @@ const AdminBookings = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Guest</label>
-                    <input disabled={!isEditing} className={`w-full p-4 rounded-2xl text-sm ${isEditing ? 'bg-gray-50' : 'bg-transparent font-medium'}`} value={selectedBooking.guestName} onChange={(e) => setSelectedBooking({...selectedBooking, guestName: e.target.value})} />
+                    <input disabled={!isEditing} className={`w-full p-4 rounded-2xl text-sm ${isEditing ? 'bg-gray-50 border border-gray-100' : 'bg-transparent font-medium'}`} value={selectedBooking.guestName} onChange={(e) => setSelectedBooking({...selectedBooking, guestName: e.target.value})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase font-bold text-gray-400 ml-2">Contact</label>
-                    <input disabled={!isEditing} className={`w-full p-4 rounded-2xl text-sm ${isEditing ? 'bg-gray-50' : 'bg-transparent font-medium'}`} value={selectedBooking.guestPhone} onChange={(e) => setSelectedBooking({...selectedBooking, guestPhone: e.target.value})} />
+                    <input disabled={!isEditing} className={`w-full p-4 rounded-2xl text-sm ${isEditing ? 'bg-gray-50 border border-gray-100' : 'bg-transparent font-medium'}`} value={selectedBooking.guestPhone} onChange={(e) => setSelectedBooking({...selectedBooking, guestPhone: e.target.value})} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-4 gap-4">
                   <div className="bg-gray-50 p-4 rounded-[2rem]">
                     <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Guests</p>
-                    <input type="number" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full" value={selectedBooking.guestCount} onChange={(e) => setSelectedBooking({...selectedBooking, guestCount: e.target.value})} />
+                    <input type="number" min="1" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full" value={selectedBooking.guestCount} onChange={(e) => setSelectedBooking({...selectedBooking, guestCount: e.target.value})} />
                   </div>
                   <div className="bg-gray-50 p-4 rounded-[2rem]">
                     <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Total Bill</p>
-                    <input type="number" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full" value={selectedBooking.totalPrice} onChange={(e) => setSelectedBooking({...selectedBooking, totalPrice: e.target.value})} />
+                    <input type="number" min="0" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full" value={selectedBooking.totalPrice} onChange={(e) => setSelectedBooking({...selectedBooking, totalPrice: Number(e.target.value)})} />
                   </div>
                   <div className="bg-[#8ba88b]/10 p-4 rounded-[2rem]">
-                    <p className="text-[9px] font-bold text-[#8ba88b] uppercase mb-1">Advance</p>
-                    <input type="number" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full text-[#2d3a2d]" value={selectedBooking.advancePaid} onChange={(e) => setSelectedBooking({...selectedBooking, advancePaid: e.target.value})} />
+                    <p className="text-[9px] font-bold text-[#8ba88b] uppercase mb-1">Paid</p>
+                    <input type="number" min="0" disabled={!isEditing} className="bg-transparent text-sm font-bold w-full text-[#2d3a2d]" value={selectedBooking.advancePaid} onChange={(e) => setSelectedBooking({...selectedBooking, advancePaid: Number(e.target.value)})} />
                   </div>
                   <div className="bg-gray-50 p-4 rounded-[2rem]">
                     <p className="text-[9px] font-bold text-gray-400 uppercase mb-1">Booked By</p>
