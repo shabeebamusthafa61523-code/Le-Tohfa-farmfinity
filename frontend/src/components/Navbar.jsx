@@ -73,6 +73,7 @@ const scrollToSection = (e, href) => {
     { name: 'Experience', href: '#amenities' },
     { name: 'Packages', href: '#pricing' },
     { name: 'Gallery', href: '#gallery' },
+    { name: 'Find Us', href: '#location' },
   ];
 
   const handleLogout = () => {
