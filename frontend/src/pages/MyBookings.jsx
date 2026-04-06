@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Calendar, User, Phone, X, ShieldCheck, CreditCard, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -10,7 +11,6 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
 
   // 1. Define API_URL for Render deployment
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     const fetchBookings = async () => {

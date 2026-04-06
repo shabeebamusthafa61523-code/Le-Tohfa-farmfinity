@@ -27,7 +27,7 @@ const UserProfile = () => {
         const { data } = await axios.get(`${API_URL}/api/auth/profile`, config);
         
         // Sync Redux with the freshest data from DB
-        dispatch(authSuccess(data)); 
+dispatch(authSuccess({ user: data.user, token: token }));
       } catch (error) {
         console.error("Profile sync failed", error);
       } finally {
