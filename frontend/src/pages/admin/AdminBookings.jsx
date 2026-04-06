@@ -9,6 +9,17 @@ import {
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
+const parseLocal = (dateStr) => {
+  const d = new Date(dateStr);
+  return new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    d.getHours(),
+    d.getMinutes(),
+    d.getSeconds()
+  );
+};
 const formatDate = (date) => {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
     .toISOString()
@@ -88,9 +99,8 @@ const isDateConflict = (dateStr) => {
   return bookings.some(existing => {
     if (selectedBooking && existing._id === selectedBooking._id) return false;
 
-    const exIn = new Date(existing.checkIn);
-    const exOut = new Date(existing.checkOut);
-
+const exIn = parseLocal(existing.checkIn);
+const exOut = parseLocal(existing.checkOut);
     // ✅ STRICT overlap (same as calendar systems)
     return (
       potIn < exOut &&   // starts before existing ends
