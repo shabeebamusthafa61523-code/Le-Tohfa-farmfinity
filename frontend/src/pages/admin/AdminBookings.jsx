@@ -9,22 +9,7 @@ import {
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
-const parseLocal = (dateStr) => {
-  const d = new Date(dateStr);
-  return new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    d.getHours(),
-    d.getMinutes(),
-    d.getSeconds()
-  );
-};
-const formatDate = (date) => {
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .split('T')[0];
-};
+
 // Business Logic for Booking Types
 const PLAN_TIMES = {
   Staycation: { in: "15:00", out: "12:00", nextDay: true },
@@ -57,7 +42,8 @@ const AdminBookings = () => {
     advance: 0, plan: 'Staycation', guestCount: 1
   });
 
-const today = formatDate(new Date());
+  const today = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     fetchData();
   }, [token]);
@@ -75,48 +61,27 @@ const today = formatDate(new Date());
       setLoading(false);
     }
   };
-  const formatDisplayDate = (dateStr) => {
-  const d = new Date(dateStr);
-
-  // ✅ Normalize timezone (same as your calendar logic)
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-
-  return local.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short'
-  });
-};
 const isDateConflict = (dateStr) => {
   if (!dateStr || !bookings.length) return false;
 
   const times = PLAN_TIMES[formData.plan];
-
-  // ✅ Proper check-in time
   const potIn = new Date(`${dateStr}T${times.in}:00`);
-
-  // ✅ Proper check-out time
   let potOut = new Date(potIn);
+  
   if (times.nextDay) {
     potOut.setDate(potOut.getDate() + 1);
   }
-
-  potOut.setHours(
-    Number(times.out.split(":")[0]),
-    Number(times.out.split(":")[1]),
-    0,
-    0
-  );
+  potOut = new Date(`${potOut.toLocaleDateString('en-CA')}T${times.out}:00`);
 
   return bookings.some(existing => {
+    // Exclude the current booking if you're editing
     if (selectedBooking && existing._id === selectedBooking._id) return false;
 
-const exIn = parseLocal(existing.checkIn);
-const exOut = parseLocal(existing.checkOut);
-    // ✅ STRICT overlap (same as calendar systems)
-    return (
-      potIn < exOut &&   // starts before existing ends
-      potOut > exIn      // ends after existing starts
-    );
+    const exIn = new Date(existing.checkIn).getTime();
+    const exOut = new Date(existing.checkOut).getTime();
+    
+    // Check if potential stay overlaps with existing stay
+    return potIn.getTime() < exOut && potOut.getTime() > exIn;
   });
 };
   const handleCreateSubmit = async (e) => {
@@ -168,7 +133,7 @@ const exOut = parseLocal(existing.checkOut);
   const month = currentMonth.getMonth();
   
   // Use 'en-CA' to get YYYY-MM-DD format reliably
-const dateStr = formatDate(new Date(year, month, day));
+  const dateStr = new Date(year, month, day).toLocaleDateString('en-CA');
   const times = PLAN_TIMES[formData.plan];
   
   const checkIn = `${dateStr}T${times.in}:00`; // Added :00 for ISO compliance
@@ -178,7 +143,7 @@ const dateStr = formatDate(new Date(year, month, day));
     checkOutDate.setDate(checkOutDate.getDate() + 1); 
   }
   
-const outDateStr = formatDate(checkOutDate);
+  const outDateStr = checkOutDate.toLocaleDateString('en-CA');
   const checkOut = `${outDateStr}T${times.out}:00`;
   
   setFormData({ ...formData, checkIn, checkOut });
@@ -246,7 +211,7 @@ const outDateStr = formatDate(checkOutDate);
 
   const filteredBookings = (bookings || []).filter(b => {
     const query = searchQuery.toLowerCase();
-const bookingDateStr = b.checkIn.split('T')[0];
+    const bookingDateStr = new Date(b.checkIn).toLocaleDateString('en-CA');
     const matchesText = b.guestName.toLowerCase().includes(query) || b.guestPhone.includes(query);
     const matchesDate = dateFilter ? bookingDateStr === dateFilter : true;
     return matchesText && matchesDate;
@@ -304,12 +269,9 @@ const bookingDateStr = b.checkIn.split('T')[0];
                     </div>
                   </td>
                   <td className="px-8 py-6">
-<p className="text-xs text-gray-600 font-medium">
-  {formatDisplayDate(b.checkIn)}
-</p>
-<p className="text-[10px] text-gray-400">
-  to {formatDisplayDate(b.checkOut)}
-</p>                  </td>
+                    <p className="text-xs text-gray-600 font-medium">{new Date(b.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                    <p className="text-[10px] text-gray-400">to {new Date(b.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                  </td>
                   <td className="px-8 py-6">
                     <p className={`font-bold ${b.remainingBalance > 0 ? 'text-red-400' : 'text-gray-300'}`}>₹{b.remainingBalance}</p>
                   </td>
@@ -374,7 +336,8 @@ const bookingDateStr = b.checkIn.split('T')[0];
                       {Array(firstDay).fill(0).map((_, i) => <div key={`empty-${i}`} />)}
                      {Array.from({ length: daysInMonth }).map((_, i) => {
   const day = i + 1;
-const dateStr = formatDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day));  const isConflict = isDateConflict(dateStr);
+  const dateStr = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toLocaleDateString('en-CA'); 
+  const isConflict = isDateConflict(dateStr);
   const isSelected = formData.checkIn.startsWith(dateStr);
   const isPast = dateStr < today;
 
