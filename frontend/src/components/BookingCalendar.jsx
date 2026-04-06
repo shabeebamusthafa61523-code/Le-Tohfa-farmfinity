@@ -109,7 +109,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   };
 
   const handleWhatsApp = () => {
-    const whatsappNum = settings?.whatsappNumber || "918590653062"; 
+    const whatsappNum = settings?.whatsappNumber || "919562042711"; 
     const message = `Hello! I'd like to book a ${activePlan} on ${selectedDate.toLocaleDateString('en-GB')}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString('en-IN')}`;
     window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`, '_blank');
   };
