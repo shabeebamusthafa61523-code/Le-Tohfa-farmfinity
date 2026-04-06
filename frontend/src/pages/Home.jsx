@@ -159,7 +159,7 @@ const Home = () => {
             whileHover={{ scale: 1.05 }} 
             className="inline-block bg-[#2d3a2d] text-white px-16 py-6 rounded-full font-serif tracking-widest uppercase text-xs"
           >
-            Inquire via WhatsApp
+            Connect on WhatsApp
           </motion.a>
         </div>
       </motion.section>
