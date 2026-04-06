@@ -8,6 +8,9 @@ import {
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 
+// To match your booking logic exactly
+const STAYCATION_TIMES = { in: "15:00", out: "12:00" };
+
 const AdminCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings] = useState([]);
@@ -17,7 +20,6 @@ const AdminCalendar = () => {
   const { token } = useSelector((state) => state.auth);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // Re-fetch when month/year changes
   useEffect(() => { 
     fetchSchedule(); 
   }, [currentDate.getMonth(), currentDate.getFullYear()]);
@@ -26,7 +28,6 @@ const AdminCalendar = () => {
     setLoading(true);
     try {
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      // Ensure this matches your main bookings endpoint
       const { data } = await axios.get(`${API_URL}/api/bookings`, config);
       setBookings(Array.isArray(data) ? data : (data.bookings || [])); 
     } catch (error) { 
@@ -39,7 +40,6 @@ const AdminCalendar = () => {
 
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   
-  // Adjusted for Monday start (0=Sun, 1=Mon... 6=Sat)
   const getFirstDayPos = () => {
     const day = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
     return day === 0 ? 6 : day - 1;
@@ -48,7 +48,6 @@ const AdminCalendar = () => {
   const handleDateAction = async (dateStr, type) => {
     const config = { headers: { Authorization: `Bearer ${token}` } };
     
-    // Safety check for unblocking
     if (type === 'unblock' && !window.confirm("Release this date for bookings?")) return;
 
     setActionLoading(true);
@@ -57,7 +56,6 @@ const AdminCalendar = () => {
         await axios.post(`${API_URL}/api/bookings/block-date`, { date: dateStr }, config);
         toast.success("Date Locked");
       } else {
-        // Find the specific ADMIN BLOCK entry for this date to get its ID
         const blockEntry = bookings.find(b => 
           b.guestName === "ADMIN BLOCK" && b.checkIn.startsWith(dateStr)
         );
@@ -100,7 +98,6 @@ const AdminCalendar = () => {
       </AnimatePresence>
 
       <div className="w-full max-w-4xl bg-white rounded-[2.5rem] p-8 md:p-16 shadow-lg border border-gray-50">
-        {/* Header Navigation */}
         <div className="flex justify-between items-center mb-12">
           <div className="flex gap-4 text-[#2d3a2d]/40">
             <button onClick={() => changeDate(-1, 'year')} className="hover:text-[#2d3a2d] transition-colors"><ChevronsLeft size={18}/></button>
@@ -120,53 +117,60 @@ const AdminCalendar = () => {
           </div>
         </div>
 
-        {/* Calendar Grid */}
         <div className="grid grid-cols-7 gap-y-2 md:gap-y-4">
           {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) => (
             <div key={day} className="text-center text-[10px] font-bold text-[#8ba88b]/60 pb-4">{day}</div>
           ))}
 
-          {/* Empty cells for start of month */}
           {Array.from({ length: getFirstDayPos() }).map((_, i) => (
             <div key={`empty-${i}`} className="h-16 md:h-20"></div>
           ))}
           
-          {/* Day Cells */}
           {Array.from({ length: getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => {
             const day = i + 1;
             const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             
             const isToday = dateStr === todayStr;
-            const guestIn = bookings.find(b => b.checkIn?.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK");
-            const guestOut = bookings.find(b => b.checkOut?.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK");
-            
-            // Check if blocked by admin
-            const adminBlock = bookings.find(b => 
-              b.guestName === "ADMIN BLOCK" && 
-              (b.checkIn?.startsWith(dateStr) || b.checkOut?.startsWith(dateStr))
+
+            // PRECISE CONFLICT DETECTION
+            // A day is "Occupied" if someone is checking IN at 3:00 PM
+            const guestIn = bookings.find(b => 
+              b.checkIn?.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK"
             );
 
+            // A day shows the "Checkout" icon if someone leaves at 12:00 PM
+            const guestOut = bookings.find(b => 
+              b.checkOut?.startsWith(dateStr) && b.guestName !== "ADMIN BLOCK"
+            );
+            
+            // Check if blocked by admin manually
+            const adminBlock = bookings.find(b => 
+              b.guestName === "ADMIN BLOCK" && b.checkIn?.startsWith(dateStr)
+            );
+
+            // Logic: You can block/unblock if there isn't a REAL guest checking in
             return (
               <div key={day} className="flex flex-col items-center justify-center relative group">
                 <button 
-                  disabled={guestIn && !adminBlock} // Can't block if a real guest is there
+                  disabled={guestIn} 
                   onClick={() => handleDateAction(dateStr, adminBlock ? 'unblock' : 'block')}
                   className={`
                     w-12 h-12 md:w-16 md:h-16 rounded-2xl flex flex-col items-center justify-center transition-all relative
                     ${guestIn ? 'bg-[#2d3a2d] text-white cursor-default' : 
-                      adminBlock ? 'bg-red-400 text-white hover:bg-red-500' : 
+                      adminBlock ? 'bg-red-400 text-white hover:bg-red-500 shadow-md' : 
                       'hover:bg-[#8ba88b]/10 text-[#2d3a2d]/60'}
                     ${isToday && !guestIn && !adminBlock ? 'ring-2 ring-[#8ba88b] ring-offset-2' : ''}
                   `}
                 >
                   <span className={`text-sm font-bold ${guestIn || adminBlock ? 'opacity-100' : 'opacity-60'}`}>{day}</span>
                   
-                  {/* Status Icons */}
-                  {guestOut && !guestIn && (
-                    <div className="absolute -top-1 -right-1 bg-[#8ba88b] text-white p-1 rounded-full border-2 border-white">
+                  {/* Logout Icon: Shows if a guest is leaving this morning, but no one is arriving */}
+                  {guestOut && !guestIn && !adminBlock && (
+                    <div className="absolute -top-1 -right-1 bg-[#8ba88b] text-white p-1 rounded-full border-2 border-white shadow-sm">
                       <LogOut size={8} />
                     </div>
                   )}
+
                   {adminBlock && (
                     <div className="absolute -bottom-1 -right-1 bg-white text-red-400 p-1 rounded-full shadow-sm border border-red-50">
                       <HardHat size={10} />
@@ -174,10 +178,9 @@ const AdminCalendar = () => {
                   )}
                 </button>
                 
-                {/* Hover Tooltip for Guest Name */}
                 {guestIn && (
                    <div className="absolute bottom-full mb-2 hidden group-hover:block z-20 bg-[#2d3a2d] text-white text-[9px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
-                     {guestIn.guestName}
+                     {guestIn.guestName} ({guestIn.plan})
                    </div>
                 )}
               </div>
@@ -185,7 +188,6 @@ const AdminCalendar = () => {
           })}
         </div>
 
-        {/* Legend */}
         <div className="mt-16 pt-8 border-t border-gray-50 flex flex-wrap justify-center gap-6">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-[#2d3a2d]" />
@@ -193,7 +195,7 @@ const AdminCalendar = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-400" />
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Blocked</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Manual Block</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full border border-gray-200" />
