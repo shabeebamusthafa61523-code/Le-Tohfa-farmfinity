@@ -75,6 +75,17 @@ const today = formatDate(new Date());
       setLoading(false);
     }
   };
+  const formatDisplayDate = (dateStr) => {
+  const d = new Date(dateStr);
+
+  // ✅ Normalize timezone (same as your calendar logic)
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+
+  return local.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short'
+  });
+};
 const isDateConflict = (dateStr) => {
   if (!dateStr || !bookings.length) return false;
 
@@ -293,9 +304,12 @@ const bookingDateStr = b.checkIn.split('T')[0];
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <p className="text-xs text-gray-600 font-medium">{new Date(b.checkIn).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                    <p className="text-[10px] text-gray-400">to {new Date(b.checkOut).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                  </td>
+<p className="text-xs text-gray-600 font-medium">
+  {formatDisplayDate(b.checkIn)}
+</p>
+<p className="text-[10px] text-gray-400">
+  to {formatDisplayDate(b.checkOut)}
+</p>                  </td>
                   <td className="px-8 py-6">
                     <p className={`font-bold ${b.remainingBalance > 0 ? 'text-red-400' : 'text-gray-300'}`}>₹{b.remainingBalance}</p>
                   </td>
