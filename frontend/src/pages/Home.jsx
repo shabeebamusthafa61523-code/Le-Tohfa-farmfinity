@@ -94,6 +94,61 @@ const Home = () => {
     </div>
   )}
 </section>
+  {/* 6. LOCATION SECTION */}
+<section id="location" className="py-24 px-6 bg-[#f8faf8]">
+  <div className="max-w-7xl mx-auto">
+    <motion.div 
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="grid md:grid-cols-2 gap-12 items-center"
+    >
+      {/* Map Side */}
+      <div className="h-[400px] w-full rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-white">
+        <iframe
+          title="Resort Location"
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3915.283539761148!2d76.08720907416401!3d11.092232989076383!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba6350005d04da5%3A0xd362b55ebbbb95db!2sLe%20Tohfa%20Farmfinity!5e0!3m2!1sen!2sin!4v1775456509062!5m2!1sen!2sin" 
+          width="100%"
+          height="100%"
+          style={{ border: 0, filter: 'grayscale(10%) contrast(90%)' }}
+          allowFullScreen=""
+          loading="lazy"
+        ></iframe>
+      </div>
+
+      {/* Info Side */}
+      <div className="space-y-8">
+        <div>
+          <span className="text-[#8ba88b] text-[10px] tracking-[0.5em] font-bold uppercase block mb-4">Find Us</span>
+          <h2 className="text-4xl md:text-5xl font-serif italic text-[#2d3a2d] mb-6">Our Sanctuary.</h2>
+          <p className="text-gray-500 font-light text-lg leading-relaxed">
+            Nestled in the heart of nature, easily accessible yet worlds away from the hustle.
+          </p>
+        </div>
+
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-[#8ba88b]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          </div>
+          <div>
+            <p className="text-[#2d3a2d] font-semibold uppercase tracking-widest text-xs mb-1">Address</p>
+            <p className="text-gray-500 font-light">Le'Tohfa Farmfinity, Near Kolayi,<br />Malappuram, Kerala, India - 676509</p>
+          </div>
+        </div>
+
+        <motion.a 
+          href="https://maps.app.goo.gl/XM1xXDDBaurt47NA6" // Replace with your actual Google Maps link
+          target="_blank"
+          whileHover={{ x: 10 }}
+          className="inline-flex items-center gap-4 text-[#2d3a2d] font-serif italic text-xl group"
+        >
+          Get Directions 
+          <span className="group-hover:translate-x-2 transition-transform duration-300">→</span>
+        </motion.a>
+      </div>
+    </motion.div>
+  </div>
+</section>
 
       {/* 5. CALL TO ACTION */}
       <motion.section className="py-40 text-center" initial="hidden" whileInView="visible">
@@ -108,7 +163,7 @@ const Home = () => {
           </motion.a>
         </div>
       </motion.section>
-
+    
       <Footer />
 
       {/* Floating FAB - Logic updated to link to login if logged out */}
