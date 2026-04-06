@@ -110,43 +110,42 @@ const deleteBooking = asyncHandler(async (req, res) => {
 // ✅ Get Booked + Blocked Dates (SEPARATED)
 const getBookedDates = asyncHandler(async (req, res) => {
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const bookings = await Booking.find(
     { checkOut: { $gte: today } },
-    'checkIn checkOut bookingType'
+    'checkIn checkOut bookingType guestName'
   );
 
   let bookedDates = [];
   let adminBlockedDates = [];
 
   bookings.forEach((booking) => {
+    // Convert to UTC-based date objects to ignore Vercel's local time
     let current = new Date(booking.checkIn);
     let stopDate = new Date(booking.checkOut);
 
-    current.setHours(12, 0, 0, 0);
-    stopDate.setHours(12, 0, 0, 0);
-
-    // ❗ IMPORTANT: checkout day NOT blocked
-    while (current < stopDate) {
-      const dateStr = current.toISOString().split('T')[0];
-
-      if (booking.bookingType === 'Block') {
-        adminBlockedDates.push(dateStr);
-      } else {
-        bookedDates.push(dateStr);
-      }
-
-      current.setDate(current.getDate() + 1);
+    // If it's an ADMIN BLOCK, we only want it to show on the day it starts
+    if (booking.guestName === "ADMIN BLOCK" || booking.bookingType === 'Block') {
+        adminBlockedDates.push(current.toISOString().split('T')[0]);
+    } else {
+        // Standard Guest Loop (Check-in to Check-out)
+        let temp = new Date(current);
+        temp.setUTCHours(12, 0, 0, 0);
+        
+        while (temp < stopDate) {
+          bookedDates.push(temp.toISOString().split('T')[0]);
+          temp.setUTCDate(temp.getUTCDate() + 1);
+        }
     }
   });
 
- res.json({
-  booked: [...new Set(bookedDates)],
-  adminBlocked: [...new Set(adminBlockedDates)],
-  allBookings: bookings // <--- Add this line so the calendar can check precise times
+  res.json({
+    booked: [...new Set(bookedDates)],
+    adminBlocked: [...new Set(adminBlockedDates)],
+    allBookings: bookings 
+  });
 });
-});
-
 // ✅ Block Date
 const blockDate = asyncHandler(async (req, res) => {
     const { date } = req.body; // "2026-03-20"
@@ -156,12 +155,11 @@ const blockDate = asyncHandler(async (req, res) => {
         throw new Error('Please provide a date');
     }
 
-    const [year, month, day] = date.split('-').map(Number);
+    // const [year, month, day] = date.split('-').map(Number);
     
     // Create local markers for the very start and very end of the day
-    const start = new Date(year, month - 1, day, 0, 0, 0); 
-    const end = new Date(year, month - 1, day, 23, 59, 59);
-
+   const start = new Date(`${date}T00:00:00.000Z`); 
+    const end = new Date(`${date}T23:59:59.999Z`);
     // 1. Check if a REAL GUEST (not an Admin Block) is already there
     const guestConflict = await Booking.findOne({
         guestName: { $ne: "ADMIN BLOCK" }, // Ignore existing admin blocks
