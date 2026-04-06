@@ -61,33 +61,27 @@ const AdminBookings = () => {
       setLoading(false);
     }
   };
-
- const isDateConflict = (dateStr) => {
+const isDateConflict = (dateStr) => {
   if (!dateStr || !bookings.length) return false;
 
   const times = PLAN_TIMES[formData.plan];
-  
-  // 1. Create potential check-in (Local Time)
   const potIn = new Date(`${dateStr}T${times.in}:00`);
+  let potOut = new Date(potIn);
   
-  // 2. Create potential check-out (Local Time)
-  let potOutDate = new Date(potIn);
   if (times.nextDay) {
-    potOutDate.setDate(potOutDate.getDate() + 1);
+    potOut.setDate(potOut.getDate() + 1);
   }
-  // Construct the string manually to avoid .toISOString() UTC shift
-  const outDatePart = potOutDate.toLocaleDateString('en-CA'); 
-  const potOut = new Date(`${outDatePart}T${times.out}:00`);
+  potOut = new Date(`${potOut.toLocaleDateString('en-CA')}T${times.out}:00`);
 
   return bookings.some(existing => {
-    // 3. Convert DB strings to numeric timestamps for absolute comparison
+    // Exclude the current booking if you're editing
+    if (selectedBooking && existing._id === selectedBooking._id) return false;
+
     const exIn = new Date(existing.checkIn).getTime();
     const exOut = new Date(existing.checkOut).getTime();
-
-    // Standard Overlap Formula
-    const hasOverlap = potIn.getTime() < exOut && potOut.getTime() > exIn;
     
-    return hasOverlap;
+    // Check if potential stay overlaps with existing stay
+    return potIn.getTime() < exOut && potOut.getTime() > exIn;
   });
 };
   const handleCreateSubmit = async (e) => {
