@@ -67,11 +67,35 @@ const today = formatDate(new Date());
 const isDateConflict = (dateStr) => {
   if (!dateStr || !bookings.length) return false;
 
+  const times = PLAN_TIMES[formData.plan];
+
+  // ✅ Proper check-in time
+  const potIn = new Date(`${dateStr}T${times.in}:00`);
+
+  // ✅ Proper check-out time
+  let potOut = new Date(potIn);
+  if (times.nextDay) {
+    potOut.setDate(potOut.getDate() + 1);
+  }
+
+  potOut.setHours(
+    Number(times.out.split(":")[0]),
+    Number(times.out.split(":")[1]),
+    0,
+    0
+  );
+
   return bookings.some(existing => {
     if (selectedBooking && existing._id === selectedBooking._id) return false;
 
-    const exInDate = formatDate(new Date(existing.checkIn));
-    return dateStr === exInDate;
+    const exIn = new Date(existing.checkIn);
+    const exOut = new Date(existing.checkOut);
+
+    // ✅ STRICT overlap (same as calendar systems)
+    return (
+      potIn < exOut &&   // starts before existing ends
+      potOut > exIn      // ends after existing starts
+    );
   });
 };
   const handleCreateSubmit = async (e) => {
