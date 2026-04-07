@@ -32,7 +32,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/api/bookings/booked-dates`);
+        const { data } = await axios.get(`${API_URL}/api/bookings`);
         setBookings(Array.isArray(data) ? data : (data.allBookings || []));
       } catch (err) {
         console.error("Calendar Sync Error:", err);
@@ -46,28 +46,48 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
   const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Start from Monday
 
-  const getTileStatus = (day) => {
-    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    const dateStr = date.toLocaleDateString('en-CA');
-    
-    if (dateStr < todayStr) return "past";
+ const getTileStatus = (day) => {
+  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+  const dateStr = date.toLocaleDateString('en-CA');
+  
+  if (dateStr < todayStr) return "past";
 
-    // Logic for Staycation (Next Day) vs Daycation (Same Day)
-    const potIn = new Date(`${dateStr}T${currentPlan.in}`);
-    let outD = new Date(potIn);
-    if (currentPlan.nextDay) outD.setDate(outD.getDate() + 1);
-    const potOut = new Date(`${outD.toLocaleDateString('en-CA')}T${currentPlan.out}`);
+  const isConflict = bookings.some(b => {
+    const bCheckInStr = b.checkIn.split('T')[0];
+    const bCheckOutStr = b.checkOut.split('T')[0];
+    const bPlan = b.plan;
 
-    const conflict = bookings.find(b => {
-      const exIn = new Date(b.checkIn);
-      const exOut = new Date(b.checkOut);
-      return potIn < exOut && potOut > exIn;
-    });
+    // 1. DIRECT BLOCK: If a booking starts on this exact day
+    if (bCheckInStr === dateStr) return true;
 
-    if (conflict) return "booked";
-    if (selectedDate.toLocaleDateString('en-CA') === dateStr) return "selected";
-    return "available";
-  };
+    // 2. STAYCATION CHECK-OUT BLOCK: 
+    // If we are looking at a Daycation/Event, we MUST block the date 
+    // if a Staycation is checking out today (because they stay until 12 PM).
+    if (activePlan !== 'Staycation') {
+      if (bCheckOutStr === dateStr && bPlan === 'Staycation') return true;
+    }
+
+    // 3. STAYCATION CHECK-IN BLOCK:
+    // If we are looking at a Staycation, we MUST block today 
+    // if a Daycation or Event is already happening today.
+    if (activePlan === 'Staycation') {
+      if (bCheckInStr === dateStr && (bPlan === 'Daycation' || bPlan === 'Event')) return true;
+      
+      // Also block today if a Daycation/Event is booked for TOMORROW
+      // (Because Staycation checkout is 12 PM tomorrow, clashing with 9 AM start)
+      const tomorrow = new Date(date);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toLocaleDateString('en-CA');
+      if (bCheckInStr === tomorrowStr && (bPlan === 'Daycation' || bPlan === 'Event')) return true;
+    }
+
+    return false;
+  });
+
+  if (isConflict) return "booked";
+  if (selectedDate.toLocaleDateString('en-CA') === dateStr) return "selected";
+  return "available";
+}; 
 
   // 4. Calculations
   const totalPrice = useMemo(() => {
