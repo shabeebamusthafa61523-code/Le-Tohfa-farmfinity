@@ -47,33 +47,28 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Start from Monday
 
   const getTileStatus = (day) => {
-  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-  const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD
-  
-  if (dateStr < todayStr) return "past";
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const dateStr = date.toLocaleDateString('en-CA');
+    
+    if (dateStr < todayStr) return "past";
 
-  // Check for direct conflicts using the same logic as Admin
-  const conflict = bookings.find(b => {
-    const bCheckInStr = b.checkIn.split('T')[0];
-    const bCheckOutStr = b.checkOut.split('T')[0];
-    
-    // Direct same-day booking
-    if (bCheckInStr === dateStr) return true;
-    
-    // Staycation overlap: If today is the checkout day of a staycation
-    if (activePlan !== 'Staycation') {
-       // logic to allow/block based on morning vs afternoon
-    }
-    
-    return false;
-  });
+    // Logic for Staycation (Next Day) vs Daycation (Same Day)
+    const potIn = new Date(`${dateStr}T${currentPlan.in}`);
+    let outD = new Date(potIn);
+    if (currentPlan.nextDay) outD.setDate(outD.getDate() + 1);
+    const potOut = new Date(`${outD.toLocaleDateString('en-CA')}T${currentPlan.out}`);
 
-  if (conflict) {
-    return conflict.guestName === "ADMIN BLOCK" ? "blocked" : "booked";
-  }
-  
-  return selectedDate.toLocaleDateString('en-CA') === dateStr ? "selected" : "available";
-};
+    const conflict = bookings.find(b => {
+      const exIn = new Date(b.checkIn);
+      const exOut = new Date(b.checkOut);
+      return potIn < exOut && potOut > exIn;
+    });
+
+    if (conflict) return "booked";
+    if (selectedDate.toLocaleDateString('en-CA') === dateStr) return "selected";
+    return "available";
+  };
+
   // 4. Calculations
   const totalPrice = useMemo(() => {
     const { base, maxGuests, extra } = currentPlan;
