@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import Calendar from 'react-calendar';
 import axios from 'axios';
-import { MessageCircle, Calendar as CalIcon, Clock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MessageCircle, Calendar as CalIcon, Clock, ArrowRight, 
+  ChevronLeft, ChevronRight, Sparkles 
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import 'react-calendar/dist/Calendar.css';
-import "./BookingCalendar.css";
 
 const DEFAULT_PLAN_SETTINGS = {
   Staycation: { base: 15000, maxGuests: 20, extra: 200, in: "15:00", out: "12:00", nextDay: true },
@@ -17,38 +18,22 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [guestCount, setGuestCount] = useState(20);
   const [bookings, setBookings] = useState([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const todayStr = new Date().toLocaleDateString('en-CA');
 
   // 1. Resolve Plan Settings
   const currentPlan = useMemo(() => {
-    if (settings?.plans && settings.plans[activePlan]) {
-      return settings.plans[activePlan];
-    }
-    return DEFAULT_PLAN_SETTINGS[activePlan];
+    return settings?.plans?.[activePlan] || DEFAULT_PLAN_SETTINGS[activePlan];
   }, [settings, activePlan]);
 
-  // 2. Fetch Occupied Dates (Fixed Auth Logic)
+  // 2. Fetch Occupied Dates
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        // Try getting token from userInfo OR direct token key
-        const savedUser = localStorage.getItem('userInfo');
-        const userInfo = savedUser ? JSON.parse(savedUser) : null;
-        const token = userInfo?.token || localStorage.getItem('token');
-
-        if (!token || token === 'undefined') {
-          console.warn("Calendar: No valid token found, skipping booked-dates fetch.");
-          return;
-        }
-
-        const { data } = await axios.get(`${API_URL}/api/bookings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        // Ensure we handle different backend response structures
-        const fetchedData = Array.isArray(data) ? data : (data.allBookings || []);
-        setBookings(fetchedData);
+        const { data } = await axios.get(`${API_URL}/api/bookings/booked-dates`);
+        setBookings(Array.isArray(data) ? data : (data.allBookings || []));
       } catch (err) {
         console.error("Calendar Sync Error:", err);
       }
@@ -56,9 +41,18 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
     fetchBookings();
   }, [API_URL]);
 
-  // 3. Tile Status Logic
-  const getTileStatus = (dateObj) => {
-    const dateStr = dateObj.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  // 3. Calendar Grid Helpers
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
+  const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Start from Monday
+
+  const getTileStatus = (day) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const dateStr = date.toLocaleDateString('en-CA');
+    
+    if (dateStr < todayStr) return "past";
+
+    // Logic for Staycation (Next Day) vs Daycation (Same Day)
     const potIn = new Date(`${dateStr}T${currentPlan.in}`);
     let outD = new Date(potIn);
     if (currentPlan.nextDay) outD.setDate(outD.getDate() + 1);
@@ -70,16 +64,14 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
       return potIn < exOut && potOut > exIn;
     });
 
-    if (!conflict) return "available-tile";
-    if (conflict.guestName === "ADMIN BLOCK") return "blocked-tile booked-tile";
-    return `${conflict.plan?.toLowerCase() || 'staycation'}-booked booked-tile`;
+    if (conflict) return "booked";
+    if (selectedDate.toLocaleDateString('en-CA') === dateStr) return "selected";
+    return "available";
   };
 
   // 4. Calculations
   const totalPrice = useMemo(() => {
-    const base = Number(currentPlan.base) || 0;
-    const maxGuests = Number(currentPlan.maxGuests) || 0;
-    const extra = Number(currentPlan.extra) || 0;
+    const { base, maxGuests, extra } = currentPlan;
     return guestCount <= maxGuests ? base : base + (guestCount - maxGuests) * extra;
   }, [guestCount, currentPlan]);
 
@@ -89,7 +81,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
     return d;
   }, [selectedDate, currentPlan]);
 
-  // 5. Checkout Navigation
+  // 5. Actions
   const handleConfirmNow = () => {
     const savedUser = localStorage.getItem('userInfo');
     const userInfo = savedUser ? JSON.parse(savedUser) : null;
@@ -100,102 +92,134 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
       plan: activePlan,
       checkIn: new Date(`${selectedDate.toLocaleDateString('en-CA')}T${currentPlan.in}`),
       checkOut: new Date(`${checkOutDate.toLocaleDateString('en-CA')}T${currentPlan.out}`),
-      totalPrice: totalPrice,
-      guestCount: guestCount,
+      totalPrice,
+      guestCount,
       advanceAmount: settings?.advanceAmount || 5000 
     };
-
     navigate('/checkout', { state: { formData } });
   };
 
   const handleWhatsApp = () => {
-const whatsappNum = (settings?.whatsappNumber || "919562042711").replace(/\D/g, '');    const message = `Hello! I'd like to book a ${activePlan} on ${selectedDate.toLocaleDateString('en-GB')}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString('en-IN')}`;
+    const whatsappNum = (settings?.whatsappNumber || "919562042711").replace(/\D/g, '');
+    const message = `Hello! I'd like to book a ${activePlan} on ${selectedDate.toLocaleDateString('en-GB')}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString('en-IN')}`;
     window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (
-    <div className="grid lg:grid-cols-12 gap-8 p-4 bg-white/50 rounded-[3rem]">
-      {/* Calendar Section */}
+    <div className="grid lg:grid-cols-12 gap-8 p-4 bg-white/50 rounded-[3rem] backdrop-blur-md border border-white/20">
+      
+      {/* --- CUSTOM CALENDAR SECTION --- */}
       <div className="lg:col-span-7">
-        <h2 className="text-3xl md:text-4xl font-serif italic text-[#2d3a2d] mb-2">Check Availability</h2>
-        <p className="text-gray-400 text-sm mb-6">Real-time availability for {activePlan} stays.</p>
-        
-        <div className="premium-calendar-v2">
-          <Calendar 
-            onChange={setSelectedDate} 
-            value={selectedDate}
-            minDate={new Date()}
-            tileDisabled={({date}) => getTileStatus(date).includes('booked-tile')}
-            tileClassName={({date}) => getTileStatus(date)}
-          />
-          
-          <div className="legend-bar mt-8 flex flex-wrap gap-6 border-t border-gray-100 pt-6">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              <div className="w-3 h-3 rounded-full bg-[#f4f7f4] border border-gray-100"/> Available
-            </div>
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              <div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected
-            </div>
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              <div className="w-3 h-3 rounded-full bg-red-50 border border-red-100"/> Blocked
-            </div>
+        <div className="flex justify-between items-end mb-8 px-4">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-serif italic text-[#2d3a2d]">Select Date</h2>
+            <p className="text-gray-400 text-sm">Real-time availability for {activePlan}</p>
           </div>
+          <div className="flex gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+             <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
+             <span className="px-4 py-2 text-sm font-bold uppercase tracking-widest text-[#2d3a2d]">
+               {currentMonth.toLocaleString('default', { month: 'short', year: 'numeric' })}
+             </span>
+             <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><ChevronRight size={20}/></button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+            <div key={d} className="text-center text-[10px] font-bold text-gray-300 uppercase mb-2">{d}</div>
+          ))}
+          
+          {/* Empty slots for start of month */}
+          {Array(adjustedFirstDay).fill(0).map((_, i) => <div key={`empty-${i}`} />)}
+
+          {/* Actual Day Tiles */}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const status = getTileStatus(day);
+            const isSelected = status === "selected";
+            const isBooked = status === "booked";
+            const isPast = status === "past";
+
+            return (
+              <motion.button
+                key={day}
+                whileHover={!isBooked && !isPast ? { y: -2, scale: 1.02 } : {}}
+                whileTap={!isBooked && !isPast ? { scale: 0.95 } : {}}
+                disabled={isBooked || isPast}
+                onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
+                className={`
+                  h-14 md:h-20 w-full rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
+                  ${isSelected ? 'bg-[#2d3a2d] text-white shadow-xl ring-4 ring-[#2d3a2d]/10' : ''}
+                  ${isBooked ? 'bg-red-50 text-red-300 cursor-not-allowed border border-red-100' : ''}
+                  ${isPast ? 'text-gray-200 cursor-not-allowed' : ''}
+                  ${status === 'available' ? 'bg-white hover:bg-[#f4f7f4] border border-gray-100 text-[#2d3a2d]' : ''}
+                `}
+              >
+                <span className={`text-lg font-bold ${isSelected ? 'font-serif italic' : ''}`}>{day}</span>
+                {isBooked && <span className="text-[8px] font-black uppercase tracking-tighter opacity-60">Reserved</span>}
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-8 flex gap-6 px-4 py-4 border-t border-gray-100">
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-white border border-gray-200"/> Free</div>
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected</div>
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-red-100"/> Booked</div>
         </div>
       </div>
 
-      {/* Summary Card */}
+      {/* --- SUMMARY CARD SECTION --- */}
       <div className="lg:col-span-5">
-        <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-gray-200/50 space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-[#2d3a2d]/5 space-y-6 sticky top-8 border border-gray-50">
+          <div className="flex justify-between items-center">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8ba88b] block mb-1">Reservation</span>
-              <h3 className="text-2xl font-serif italic text-[#2d3a2d]">{activePlan}</h3>
+              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8ba88b] block mb-1">Your Stay</span>
+              <h3 className="text-3xl font-serif italic text-[#2d3a2d]">{activePlan}</h3>
             </div>
-            <div className="bg-[#f4f7f4] p-3 rounded-2xl text-[#8ba88b]">
-              {activePlan === "Staycation" ? <CalIcon size={20}/> : <Clock size={20}/>}
+            <div className="bg-[#f4f7f4] p-4 rounded-2xl text-[#8ba88b]">
+              {activePlan === "Staycation" ? <CalIcon size={24}/> : <Clock size={24}/>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+          <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-6 rounded-3xl border border-gray-100">
             <div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-In</p>
-              <p className="text-xs font-semibold text-[#2d3a2d]">{selectedDate.toLocaleDateString('en-GB')}</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entry</p>
+              <p className="text-sm font-bold text-[#2d3a2d]">{selectedDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
               <p className="text-[10px] text-gray-400">{currentPlan.in}</p>
             </div>
             <div className="text-right border-l border-gray-200 pl-4">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-Out</p>
-              <p className="text-xs font-semibold text-[#2d3a2d]">{checkOutDate.toLocaleDateString('en-GB')}</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Exit</p>
+              <p className="text-sm font-bold text-[#2d3a2d]">{checkOutDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
               <p className="text-[10px] text-gray-400">{currentPlan.out}</p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-between items-center px-1">
-              <span className="font-bold text-xs text-[#2d3a2d] uppercase tracking-wider">Guest Count</span>
-              <span className="bg-[#2d3a2d] text-white px-3 py-1 rounded-full text-[10px] font-bold">{guestCount}</span>
+          <div className="space-y-4 px-2">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-xs text-[#2d3a2d] uppercase tracking-wider">Total Guests</span>
+              <span className="bg-[#2d3a2d] text-white px-4 py-1 rounded-full text-[11px] font-bold">{guestCount}</span>
             </div>
             <input 
-              type="range" 
-              min="1" 
-              max={Number(currentPlan.maxGuests) + 20} 
-              value={guestCount} 
-              onChange={e => setGuestCount(Number(e.target.value))} 
+              type="range" min="1" max={Number(currentPlan.maxGuests) + 20} 
+              value={guestCount} onChange={e => setGuestCount(Number(e.target.value))} 
               className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none accent-[#8ba88b] cursor-pointer" 
             />
           </div>
 
-          <div className="bg-[#2d3a2d] p-8 rounded-[2rem] text-center text-white">
+          <div className="bg-[#2d3a2d] p-8 rounded-[2rem] text-center text-white shadow-xl relative overflow-hidden">
+            <Sparkles className="absolute top-2 right-4 opacity-10" size={40} />
             <p className="text-[9px] uppercase opacity-40 tracking-[0.3em] mb-1">Experience Total</p>
             <div className="text-4xl font-serif italic">₹{totalPrice.toLocaleString('en-IN')}</div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 pt-2">
             <button 
               onClick={handleConfirmNow}
-              className="group w-full bg-[#8ba88b] text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-[#7a997a] transition-all shadow-lg active:scale-95"
+              className="w-full bg-[#8ba88b] text-white py-5 rounded-2xl font-serif italic text-xl flex items-center justify-center gap-3 hover:bg-[#7a997a] transition-all shadow-lg active:scale-95"
             >
-              <span className="font-serif italic text-xl">Confirm Booking</span>
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              Confirm Booking <ArrowRight size={20} />
             </button>
 
             <button 
@@ -203,7 +227,7 @@ const whatsappNum = (settings?.whatsappNumber || "919562042711").replace(/\D/g, 
               className="w-full bg-white border border-gray-100 text-[#2d3a2d] py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all"
             >
               <MessageCircle size={18} className="text-green-500"/> 
-              <span className="text-sm">Inquire on WhatsApp</span>
+              <span className="text-sm uppercase tracking-widest text-[10px]">Inquire Availability</span>
             </button>
           </div>
         </div>
