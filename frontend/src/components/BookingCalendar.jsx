@@ -42,7 +42,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
           return;
         }
 
-        const { data } = await axios.get(`${API_URL}/api/bookings/booked-dates`, {
+        const { data } = await axios.get(`${API_URL}/api/bookings`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
