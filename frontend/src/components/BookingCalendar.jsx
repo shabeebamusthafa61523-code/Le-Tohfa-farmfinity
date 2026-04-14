@@ -168,7 +168,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
                 disabled={isBooked || isPast}
                 onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
                 className={`
-                  h-14 md:h-20 w-full bg-green-200 rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
+                  h-14 md:h-20 w-full  rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
                   ${isSelected ? 'bg-[#2d3a2d] text-white shadow-xl ring-4 ring-[#2d3a2d]/10' : ''}
                   ${isBooked ? 'bg-red-70 text-red-300 cursor-not-allowed border border-red-200' : ''}
                   ${isPast ? 'text-gray-200 cursor-not-allowed' : ''}
