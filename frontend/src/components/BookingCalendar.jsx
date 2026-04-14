@@ -126,33 +126,34 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   };
 
   return (
-    <div className="grid lg:grid-cols-12 gap-8 p-4 bg-white/50 rounded-[3rem] backdrop-blur-md border border-white/20">
+    <div className="grid lg:grid-cols-12 gap-0 bg-[#f8f7f4] border border-[#2d3a2d]/10 overflow-hidden shadow-2xl">
       
       {/* --- CUSTOM CALENDAR SECTION --- */}
-      <div className="lg:col-span-7">
-        <div className="flex justify-between items-end mb-8 px-4">
+      <div className="lg:col-span-7 p-8 md:p-12 bg-white">
+        <div className="flex justify-between items-start mb-12">
           <div>
-            <h2 className="text-3xl md:text-4xl font-serif italic text-[#2d3a2d]">Select Date</h2>
-            <p className="text-gray-400 text-sm">Real-time availability for {activePlan}</p>
+            <span className="text-[10px] uppercase tracking-[0.4em] text-[#8ba88b] font-bold block mb-2">Availability</span>
+            <h2 className="text-4xl md:text-5xl font-serif text-[#2d3a2d] leading-none">
+              Select <span className="italic font-light">Dates</span>
+            </h2>
           </div>
-          <div className="flex gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-             <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
-             <span className="px-4 py-2 text-sm font-bold uppercase tracking-widest text-[#2d3a2d]">
-               {currentMonth.toLocaleString('default', { month: 'short', year: 'numeric' })}
+          
+          <div className="flex items-center gap-4 border-b border-[#2d3a2d]/10 pb-2">
+             <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-1 hover:text-[#8ba88b] transition-colors"><ChevronLeft size={18}/></button>
+             <span className="px-4 text-[11px] font-black uppercase tracking-[0.2em] text-[#2d3a2d] min-w-[120px] text-center">
+               {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
              </span>
-             <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><ChevronRight size={20}/></button>
+             <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-1 hover:text-[#8ba88b] transition-colors"><ChevronRight size={18}/></button>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-px bg-gray-100 border border-gray-100 shadow-sm">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-            <div key={d} className="text-center text-[10px] font-bold text-gray-300 uppercase mb-2">{d}</div>
+            <div key={d} className="bg-white py-4 text-center text-[9px] font-bold text-gray-400 uppercase tracking-widest">{d}</div>
           ))}
           
-          {/* Empty slots for start of month */}
-          {Array(adjustedFirstDay).fill(0).map((_, i) => <div key={`empty-${i}`} />)}
+          {Array(adjustedFirstDay).fill(0).map((_, i) => <div key={`empty-${i}`} className="bg-[#fcfcfb]" />)}
 
-          {/* Actual Day Tiles */}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const status = getTileStatus(day);
@@ -163,91 +164,91 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
             return (
               <motion.button
                 key={day}
-                whileHover={!isBooked && !isPast ? { y: -2, scale: 1.02 } : {}}
-                whileTap={!isBooked && !isPast ? { scale: 0.95 } : {}}
+                whileHover={!isBooked && !isPast ? { backgroundColor: "#f8f7f4" } : {}}
                 disabled={isBooked || isPast}
                 onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
                 className={`
-                  h-14 md:h-20 w-full rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
-                  ${isSelected ? 'bg-[#2d3a2d] text-white shadow-xl ring-4 ring-[#2d3a2d]/10' : ''}
-                  ${isBooked ? 'bg-red-50 text-red-300 cursor-not-allowed border border-red-100' : ''}
-                  ${isPast ? 'text-gray-200 cursor-not-allowed' : ''}
-                  ${status === 'available' ? 'bg-white hover:bg-[#f4f7f4] border border-gray-100 text-[#2d3a2d]' : ''}
+                  h-20 md:h-28 w-full flex flex-col items-center justify-center transition-all relative
+                  ${isSelected ? 'bg-[#2d3a2d] text-white z-10' : 'bg-white text-[#2d3a2d]'}
+                  ${isBooked ? 'bg-[#f8f7f4] text-gray-300 cursor-not-allowed' : ''}
+                  ${isPast ? 'text-gray-100 cursor-not-allowed bg-white' : ''}
                 `}
               >
-                <span className={`text-lg font-bold ${isSelected ? 'font-serif italic' : ''}`}>{day}</span>
-                {isBooked && <span className="text-[8px] font-black uppercase tracking-tighter opacity-60">Reserved</span>}
+                <span className={`text-xl ${isSelected ? 'font-serif italic scale-125' : 'font-light'}`}>{day}</span>
+                {isBooked && <span className="absolute bottom-2 text-[7px] font-bold uppercase tracking-tighter opacity-40">Occupied</span>}
+                {isSelected && <motion.div layoutId="underline" className="absolute bottom-4 w-1 h-1 bg-[#8ba88b] rounded-full" />}
               </motion.button>
             );
           })}
         </div>
 
         {/* Legend */}
-        <div className="mt-8 flex gap-6 px-4 py-4 border-t border-gray-100">
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-white border border-gray-200"/> Free</div>
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected</div>
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-red-100"/> Booked</div>
+        <div className="mt-10 flex gap-8 items-center justify-center lg:justify-start opacity-60">
+           <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest"><div className="w-2 h-2 bg-[#2d3a2d]"/> Selected</div>
+           <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest"><div className="w-2 h-2 bg-gray-100 border border-gray-200"/> Available</div>
+           <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-gray-300"><div className="w-2 h-2 bg-[#f8f7f4]"/> Booked</div>
         </div>
       </div>
 
       {/* --- SUMMARY CARD SECTION --- */}
-      <div className="lg:col-span-5">
-        <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-[#2d3a2d]/5 space-y-6 sticky top-8 border border-gray-50">
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8ba88b] block mb-1">Your Stay</span>
-              <h3 className="text-3xl font-serif italic text-[#2d3a2d]">{activePlan}</h3>
-            </div>
-            <div className="bg-[#f4f7f4] p-4 rounded-2xl text-[#8ba88b]">
-              {activePlan === "Staycation" ? <CalIcon size={24}/> : <Clock size={24}/>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-6 rounded-3xl border border-gray-100">
-            <div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entry</p>
-              <p className="text-sm font-bold text-[#2d3a2d]">{selectedDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
-              <p className="text-[10px] text-gray-400">{currentPlan.in}</p>
-            </div>
-            <div className="text-right border-l border-gray-200 pl-4">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Exit</p>
-              <p className="text-sm font-bold text-[#2d3a2d]">{checkOutDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
-              <p className="text-[10px] text-gray-400">{currentPlan.out}</p>
-            </div>
-          </div>
-
-          <div className="space-y-4 px-2">
+      <div className="lg:col-span-5 p-8 md:p-12 bg-[#2d3a2d] text-white flex flex-col justify-between">
+        <div className="space-y-12">
+          <header className="border-b border-white/10 pb-8">
+            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-[#8ba88b] block mb-4">Reservation Details</span>
             <div className="flex justify-between items-center">
-              <span className="font-bold text-xs text-[#2d3a2d] uppercase tracking-wider">Total Guests</span>
-              <span className="bg-[#2d3a2d] text-white px-4 py-1 rounded-full text-[11px] font-bold">{guestCount}</span>
+              <h3 className="text-4xl font-serif italic font-light">{activePlan}</h3>
+              <div className="opacity-40">
+                {activePlan === "Staycation" ? <CalIcon size={32} strokeWidth={1}/> : <Clock size={32} strokeWidth={1}/>}
+              </div>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-2 gap-px bg-white/10 border border-white/10">
+            <div className="p-6 bg-[#2d3a2d]">
+              <p className="text-[9px] font-bold text-[#8ba88b] uppercase tracking-[0.2em] mb-2">Arrival</p>
+              <p className="text-lg font-serif">{selectedDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
+              <p className="text-[10px] opacity-50 uppercase">{currentPlan.in}</p>
+            </div>
+            <div className="p-6 bg-[#2d3a2d] border-l border-white/10">
+              <p className="text-[9px] font-bold text-[#8ba88b] uppercase tracking-[0.2em] mb-2">Departure</p>
+              <p className="text-lg font-serif">{checkOutDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
+              <p className="text-[10px] opacity-50 uppercase">{currentPlan.out}</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex justify-between items-end border-b border-white/10 pb-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8ba88b]">Total Guests</span>
+              <span className="text-2xl font-serif">{guestCount}</span>
             </div>
             <input 
               type="range" min="1" max={Number(currentPlan.maxGuests) + 20} 
               value={guestCount} onChange={e => setGuestCount(Number(e.target.value))} 
-              className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none accent-[#8ba88b] cursor-pointer" 
+              className="w-full h-px bg-white/20 appearance-none accent-[#8ba88b] cursor-pointer" 
             />
           </div>
+        </div>
 
-          <div className="bg-[#2d3a2d] p-8 rounded-[2rem] text-center text-white shadow-xl relative overflow-hidden">
-            <Sparkles className="absolute top-2 right-4 opacity-10" size={40} />
-            <p className="text-[9px] uppercase opacity-40 tracking-[0.3em] mb-1">Experience Total</p>
-            <div className="text-4xl font-serif italic">₹{totalPrice.toLocaleString('en-IN')}</div>
+        <div className="mt-16 space-y-8">
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-[0.5em] opacity-40 mb-2">Estimated Investment</p>
+            <div className="text-6xl font-serif">₹{totalPrice.toLocaleString('en-IN')}</div>
           </div>
 
-          <div className="space-y-3 pt-2">
+          <div className="grid gap-4">
             <button 
               onClick={handleConfirmNow}
-              className="w-full bg-[#8ba88b] text-white py-5 rounded-2xl font-serif italic text-xl flex items-center justify-center gap-3 hover:bg-[#7a997a] transition-all shadow-lg active:scale-95"
+              className="w-full bg-[#8ba88b] text-[#2d3a2d] py-6 font-bold uppercase tracking-[0.2em] text-[11px] hover:bg-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-4"
             >
-              Confirm Booking <ArrowRight size={20} />
+              Confirm Reservation <ArrowRight size={16} />
             </button>
 
             <button 
               onClick={handleWhatsApp}
-              className="w-full bg-white border border-gray-100 text-[#2d3a2d] py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all"
+              className="w-full bg-transparent border border-white/20 text-white py-5 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:bg-white/5 transition-all"
             >
-              <MessageCircle size={18} className="text-green-500"/> 
-              <span className="text-sm uppercase tracking-widest text-[10px]">Inquire Availability</span>
+              <MessageCircle size={16} className="text-[#8ba88b]"/> 
+              Inquire via Concierge
             </button>
           </div>
         </div>
