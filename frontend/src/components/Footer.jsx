@@ -51,7 +51,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="w-full pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center text-[10px] uppercase tracking-[0.2em] text-gray-500">
           <p>© 2026 Le'Tohfa Farminity. All rights reserved.</p>
-          <p className="mt-4 md:mt-0">Design & Dev by Your Brand</p>
+          <p className="mt-4 md:mt-0">Design & Dev by Sha</p>
         </div>
       </div>
     </footer>
