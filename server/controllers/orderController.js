@@ -166,7 +166,12 @@ const verifyWebsitePayment = asyncHandler(async (req, res) => {
 // @desc    Fetch User's Booking History
 // @route   GET /api/bookings/mybookings
 const getMyBookings = asyncHandler(async (req, res) => {
-  const bookings = await Booking.find({ user: req.user._id }).sort({ createdAt: -1 });
+  // Add the same filter here so users don't see failed attempts
+  const bookings = await Booking.find({ 
+    user: req.user._id,
+    paymentStatus: { $ne: 'Pending' } 
+  }).sort({ createdAt: -1 });
+  
   res.json(bookings);
 });
 

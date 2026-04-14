@@ -3,8 +3,14 @@ const asyncHandler = require('express-async-handler');
 
 
 // ✅ Get all bookings
+// ✅ Get all bookings (Filtered to hide abandoned payments)
 const getBookings = asyncHandler(async (req, res) => {
-  const bookings = await Booking.find({}).sort({ createdAt: -1 });
+  // Only fetch bookings that are NOT 'Pending'
+  // This ensures abandoned checkout sessions don't block the calendar
+  const bookings = await Booking.find({ 
+    paymentStatus: { $ne: 'Pending' } 
+  }).sort({ createdAt: -1 });
+  
   res.json(bookings);
 });
 
