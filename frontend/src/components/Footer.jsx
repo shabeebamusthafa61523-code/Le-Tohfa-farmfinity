@@ -37,7 +37,7 @@ const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-xs uppercase tracking-widest text-[#8ba88b] font-bold">Social Connect</h4>
             <a 
-              href="https://instagram.com/letohfa_farminity" 
+              href="https://www.instagram.com/letohfa_farmfinity/" 
               target="_blank" 
               rel="noreferrer"
               className="flex items-center justify-center md:justify-start space-x-3 text-lg hover:text-[#8ba88b] transition"

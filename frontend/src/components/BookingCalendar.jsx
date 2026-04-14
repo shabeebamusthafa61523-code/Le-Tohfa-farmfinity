@@ -133,7 +133,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
         <div className="flex justify-between items-end mb-8 px-4">
           <div>
             <h2 className="text-3xl md:text-4xl font-serif italic text-[#2d3a2d]">Select Date</h2>
-            <p className="text-gray-400 text-sm">Real-time availability for {activePlan}</p>
+            <p className="text-gray-400 text-sm">Availability for {activePlan}</p>
           </div>
           <div className="flex gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
              <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
