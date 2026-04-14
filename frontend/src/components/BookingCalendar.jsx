@@ -125,7 +125,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
     window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  return (
+ return (
     <div className="grid lg:grid-cols-12 gap-8 p-4 bg-white/50 rounded-[3rem] backdrop-blur-md border border-white/20">
       
       {/* --- CUSTOM CALENDAR SECTION --- */}
@@ -168,25 +168,32 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
                 disabled={isBooked || isPast}
                 onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
                 className={`
-                  h-14 md:h-20 w-full  rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
-                  ${isSelected ? 'bg-[#2d3a2d] text-white shadow-xl ring-4 ring-[#2d3a2d]/10' : ''}
-                  ${isBooked ? 'bg-red-70 text-red-300 cursor-not-allowed border border-red-200' : ''}
-                  ${isPast ? 'text-gray-200 cursor-not-allowed' : ''}
-                  ${status === 'available' ? 'bg-white hover:bg-[#f4f7f4] border border-gray-100 text-[#2d3a2d]' : ''}
+                  h-14 md:h-20 w-full rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden border
+                  ${isSelected ? 'bg-[#2d3a2d] text-white shadow-xl ring-4 ring-[#2d3a2d]/10 border-[#2d3a2d]' : ''}
+                  ${isBooked ? 'bg-red-100 text-red-600 cursor-not-allowed border-red-200 shadow-sm' : ''}
+                  ${isPast ? 'text-gray-200 cursor-not-allowed border-transparent bg-transparent' : ''}
+                  ${status === 'available' ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-100 text-emerald-800' : ''}
                 `}
               >
                 <span className={`text-lg font-bold ${isSelected ? 'font-serif italic' : ''}`}>{day}</span>
-                {isBooked && <span className="text-[8px] font-black uppercase tracking-tighter opacity-60">Reserved</span>}
+                {isBooked && (
+                  <span className="text-[7px] font-black uppercase tracking-tighter text-red-500/80 mt-1 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse" /> Reserved
+                  </span>
+                )}
+                {status === 'available' && !isSelected && (
+                   <span className="w-1 h-1 bg-emerald-400 rounded-full mt-1" />
+                )}
               </motion.button>
             );
           })}
         </div>
 
         {/* Legend */}
-        <div className="mt-8 flex gap-6 px-4 py-4 border-t border-gray-100">
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-white border border-gray-200"/> Free</div>
+        <div className="mt-8 flex gap-6 px-4 py-4 border-t border-gray-100 justify-center md:justify-start">
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-200"/> Available</div>
            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected</div>
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-red-200"/> Booked</div>
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-red-200 border border-red-300"/> Booked</div>
         </div>
       </div>
 
