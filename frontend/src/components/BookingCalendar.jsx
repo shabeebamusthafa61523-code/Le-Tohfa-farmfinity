@@ -168,9 +168,9 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
                 disabled={isBooked || isPast}
                 onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
                 className={`
-                  h-14 md:h-20 w-full rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
+                  h-14 md:h-20 w-full bg-green-200 rounded-2xl flex flex-col items-center justify-center transition-all relative overflow-hidden
                   ${isSelected ? 'bg-[#2d3a2d] text-white shadow-xl ring-4 ring-[#2d3a2d]/10' : ''}
-                  ${isBooked ? 'bg-red-50 text-red-300 cursor-not-allowed border border-red-100' : ''}
+                  ${isBooked ? 'bg-red-70 text-red-300 cursor-not-allowed border border-red-200' : ''}
                   ${isPast ? 'text-gray-200 cursor-not-allowed' : ''}
                   ${status === 'available' ? 'bg-white hover:bg-[#f4f7f4] border border-gray-100 text-[#2d3a2d]' : ''}
                 `}
@@ -186,7 +186,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
         <div className="mt-8 flex gap-6 px-4 py-4 border-t border-gray-100">
            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-white border border-gray-200"/> Free</div>
            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected</div>
-           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-red-100"/> Booked</div>
+           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-red-200"/> Booked</div>
         </div>
       </div>
 
