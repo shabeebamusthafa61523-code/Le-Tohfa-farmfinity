@@ -26,13 +26,14 @@ const getStatsSummary = async (req, res) => {
 
     // 1. Fetch bookings ONLY for the selected month range
     const bookings = await Booking.find({
-      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-      paymentStatus: { $ne: 'Pending' } // Still ignoring abandoned checkouts
+      checkIn: { $gte: startOfMonth, $lte: endOfMonth },
+      paymentStatus: { $ne: 'Pending' } 
     });
 
     const totalUsers = await User.countDocuments();
     
     const totals = bookings.reduce((acc, booking) => {
+      // Includes both the advance and any settled amount for bookings in this month
       acc.totalRevenue += booking.advancePaid || 0;
       acc.pendingBalance += booking.remainingBalance || 0;
       return acc;
