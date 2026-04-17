@@ -27,13 +27,17 @@ const createManualBooking = asyncHandler(async (req, res) => {
     checkOut,
     totalPrice,
     advance,
-    bookedBy // <--- 1. Receive the account name from the frontend
+    bookedBy 
   } = req.body;
 
-  // Conflict check (prevents double booking)
+  // ✅ IMPROVED CONFLICT CHECK
   const conflict = await Booking.findOne({
-    $or: [
+    // Ignore bookings that shouldn't block the calendar
+    paymentStatus: { $ne: 'Pending' }, 
+    status: { $ne: 'Cancelled' }, // Add this if you have a status field
+    $and: [
       {
+        // A conflict exists only if the time ranges actually overlap
         checkIn: { $lt: new Date(checkOut) },
         checkOut: { $gt: new Date(checkIn) }
       }
@@ -42,7 +46,8 @@ const createManualBooking = asyncHandler(async (req, res) => {
 
   if (conflict) {
     res.status(400);
-    throw new Error('Selected dates already booked');
+    // Be specific so you know WHO is blocking the date
+    throw new Error(`Conflict: ${conflict.guestName} has already booked these dates.`);
   }
 
   const remainingBalance = totalPrice - advance;
@@ -57,14 +62,14 @@ const createManualBooking = asyncHandler(async (req, res) => {
     guestPlace,
     guestCount,
     plan,
-    checkIn,
-    checkOut,
+    checkIn: new Date(checkIn), // Ensure it's a Date object
+    checkOut: new Date(checkOut),
     totalPrice,
     advancePaid: advance,
     remainingBalance,
     paymentStatus,
     bookingType: 'Manual',
-    bookedBy: bookedBy || 'System' // <--- 2. Save the account name (e.g., "admin3")
+    bookedBy: bookedBy || 'System'
   });
 
   res.status(201).json(booking);
@@ -125,26 +130,25 @@ const getBookedDates = asyncHandler(async (req, res) => {
   let bookedDates = [];
   let adminBlockedDates = [];
 
-  bookings.forEach((booking) => {
+ bookings.forEach((booking) => {
     let current = new Date(booking.checkIn);
     let stopDate = new Date(booking.checkOut);
 
-    current.setHours(12, 0, 0, 0);
-    stopDate.setHours(12, 0, 0, 0);
+    // Remove these lines as they mess up Daycation vs Staycation logic
+    // current.setHours(12, 0, 0, 0); 
+    // stopDate.setHours(12, 0, 0, 0);
 
-    // ❗ IMPORTANT: checkout day NOT blocked
-    while (current < stopDate) {
-      const dateStr = current.toISOString().split('T')[0];
-
-      if (booking.bookingType === 'Block') {
-        adminBlockedDates.push(dateStr);
-      } else {
-        bookedDates.push(dateStr);
-      }
-
-      current.setDate(current.getDate() + 1);
+    // If it's a Daycation, we only want to mark that ONE day as booked
+    if (booking.plan === "Daycation") {
+        bookedDates.push(current.toISOString().split('T')[0]);
+    } else {
+        // For Staycations, loop through the nights
+        while (current < stopDate) {
+            bookedDates.push(current.toISOString().split('T')[0]);
+            current.setDate(current.getDate() + 1);
+        }
     }
-  });
+});
 
  res.json({
   booked: [...new Set(bookedDates)],
