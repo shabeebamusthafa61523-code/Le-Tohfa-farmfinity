@@ -113,7 +113,7 @@ const Checkout = () => {
       doc.setFont("times", "italic");
       doc.text("Thank you for choosing Le'Tohfa. Your journey begins soon.", 105, finalY + 20, { align: 'center' });
 
-      doc.save(`LeTohfa_${displayId}.pdf`);
+      doc.save(`Booking_${displayId}.pdf`);
     } catch (error) {
       console.error("PDF Error:", error);
     }
@@ -145,7 +145,7 @@ const Checkout = () => {
         key: rzpKey,
         amount: order.amount,
         currency: order.currency,
-        name: "Le'Tohfa Journeys",
+        name: "Journeys",
         description: `Confirmation for ${formData.plan}`,
         order_id: order.id,
         handler: async (response) => {
