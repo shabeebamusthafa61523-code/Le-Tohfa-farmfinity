@@ -29,8 +29,7 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   }, [settings, activePlan]);
 
   // 2. Fetch Occupied Dates
-  useEffect(() => {
-   // Inside useEffect in BookingCalendar.jsx
+  // Inside useEffect in BookingCalendar.jsx
 useEffect(() => {
   const fetchBookings = async () => {
     try {
