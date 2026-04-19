@@ -16,8 +16,6 @@ const Checkout = () => {
 
   // --- CONFIGURATION ---
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-  
-  // Use settings amount for UI display, fallback to 3000
   const ADVANCE_AMOUNT_UI = settings?.advanceAmount || 3000;
 
   const [guestDetails, setGuestDetails] = useState({
@@ -48,9 +46,18 @@ const Checkout = () => {
   }
 
   const { formData } = state;
-  const balanceDueAtResortUI = formData.totalPrice - ADVANCE_AMOUNT_UI;
+  const balanceDueUI = formData.totalPrice - ADVANCE_AMOUNT_UI;
 
-  // --- UI HELPERS ---
+  // --- HELPERS ---
+  
+  // Premium Booking ID Logic (LTJ - YearMonth - Last4ID)
+  const generateDisplayId = (mongoId) => {
+    const prefix = "LTJ";
+    const datePart = new Date().toISOString().split('T')[0].replace(/-/g, '').slice(2, 6); // e.g. 2604
+    const randomPart = mongoId.slice(-4).toUpperCase();
+    return `${prefix}-${datePart}-${randomPart}`;
+  };
+
   const showConfirmationToast = () => {
     toast.custom((t) => (
       <div className={`${t.visible ? 'animate-in fade-in zoom-in' : 'animate-out fade-out zoom-out'} max-w-md w-full bg-white shadow-2xl rounded-[2.5rem] p-6 border-b-8 border-[#8ba88b]`}>
@@ -67,35 +74,51 @@ const Checkout = () => {
     ), { duration: 5000 });
   };
 
-  // UPDATED: Now accepts the actual amount paid from Razorpay
   const generateInvoice = (bookingId, actualPaidINR) => {
     try {
       const doc = new jsPDF();
+      const displayId = generateDisplayId(bookingId);
       const remaining = formData.totalPrice - actualPaidINR;
-
-      doc.setFont("times", "italic");
-      doc.setFontSize(22);
-      doc.setTextColor(45, 58, 45); 
-      doc.text("Le'Tohfa Journeys", 105, 20, { align: 'center' });
       
+      const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      }) : 'N/A';
+
+      // Brand Header
+      doc.setFont("times", "italic");
+      doc.setFontSize(24);
+      doc.setTextColor(45, 58, 45); 
+      doc.text("Journeys", 105, 25, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("OFFICIAL BOOKING CONFIRMATION", 105, 32, { align: 'center' });
+
       autoTable(doc, {
-        startY: 40,
+        startY: 45,
         head: [['Description', 'Details']],
         body: [
-          ['Booking ID', bookingId.toUpperCase()],
+          ['Booking Reference', displayId],
           ['Guest Name', guestDetails.name],
           ['Phone Number', guestDetails.phone],
           ['Plan Selected', formData.plan],
-          ['Check-In Date', new Date(formData.checkIn).toLocaleDateString('en-GB')],
+          ['Check-In Date', formatDate(formData.checkIn)],
+          ['Check-Out Date', formatDate(formData.checkOut)],
           ['Total Package Price', `INR ${formData.totalPrice.toLocaleString()}`],
-          ['Advance Paid', `INR ${actualPaidINR.toLocaleString()}`],
-          ['Balance Due at Resort', `INR ${remaining.toLocaleString()}`],
+          ['Advance Paid (Online)', `INR ${actualPaidINR.toLocaleString()}`],
+          ['Balance Due on Arrival', `INR ${remaining.toLocaleString()}`],
         ],
         theme: 'striped',
-        headStyles: { fillColor: [45, 58, 45] },
+        headStyles: { fillColor: [45, 58, 45], fontSize: 12 },
+        styles: { font: "times", cellPadding: 5 },
       });
 
-      doc.save(`LeTohfa_Invoice_${bookingId.slice(-6)}.pdf`);
+      const finalY = doc.lastAutoTable.finalY;
+      doc.setFontSize(10);
+      doc.setFont("times", "italic");
+      doc.text("Thank you for choosing Us. Your journey begins soon.", 105, finalY + 20, { align: 'center' });
+
+      doc.save(`LeTohfa_${displayId}.pdf`);
     } catch (error) {
       console.error("PDF Error:", error);
     }
@@ -105,62 +128,49 @@ const Checkout = () => {
   const handleRazorpayPayment = async () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
     const activeToken = token || localStorage.getItem('token');
-    const cleanToken = (activeToken && activeToken !== 'undefined' && activeToken !== 'null') 
-      ? activeToken.replace(/"/g, '') 
-      : null;
+    const cleanToken = (activeToken && activeToken !== 'undefined') ? activeToken.replace(/"/g, '') : null;
 
-    if (!cleanToken) return toast.error("Please log in again to continue.");
-    if (!rzpKey || !window.Razorpay) return toast.error("Payment system offline.");
+    if (!cleanToken) return toast.error("Please log in again.");
+    if (!rzpKey || !window.Razorpay) return toast.error("Payment gateway unreachable.");
 
     setLoading(true);
 
     try {
-      const config = { 
-        headers: { 
-          Authorization: `Bearer ${cleanToken}`,
-          'Content-Type': 'application/json'
-        } 
-      };
+      const config = { headers: { Authorization: `Bearer ${cleanToken}` } };
 
-      // Step 1: Create the Booking in DB
+      // 1. Create DB Record
       const { data: booking } = await axios.post(`${API_URL}/api/order/create`, {
         ...formData,
         guestName: guestDetails.name,
         guestPhone: guestDetails.phone,
       }, config);
 
-      // Step 2: Initialize Razorpay Order (Fetched from dynamic backend settings)
+      // 2. Init Razorpay Order
       const { data: order } = await axios.post(`${API_URL}/api/order/razorpay-order/${booking._id}`, {}, config);
-
-      // Extract the real amount (converted from paise)
       const actualPaidINR = order.amount / 100;
 
       const options = {
-        key: rzpKey, 
+        key: rzpKey,
         amount: order.amount,
         currency: order.currency,
-        name: settings?.siteName || "Le'Tohfa Journeys",
-        description: `Advance for ${formData.plan}`,
+        name: "Journeys with Us",
+        description: `Confirmation for ${formData.plan}`,
         order_id: order.id,
         handler: async (response) => {
           try {
-            // Step 3: Verify Payment
             const { data } = await axios.post(`${API_URL}/api/order/verify-razorpay`, { 
-              ...response, 
-              bookingId: booking._id 
+              ...response, bookingId: booking._id 
             }, config);
 
             if (data.success) {
               showConfirmationToast();
-              
-              // Generate invoice using the actual amount from the order
               generateInvoice(booking._id, actualPaidINR);
               
               navigate('/booking-success', { 
                 state: { 
                   booking: { 
                     ...booking, 
-                    ...data.updatedBooking, 
+                    displayId: generateDisplayId(booking._id),
                     advancePaid: actualPaidINR,
                     remainingBalance: formData.totalPrice - actualPaidINR
                   } 
@@ -168,14 +178,10 @@ const Checkout = () => {
               });
             }
           } catch (err) {
-            toast.error("Payment verification failed. Check 'My Bookings'.");
+            toast.error("Verification failed. Our team will contact you.");
           }
         },
-        prefill: {
-          name: guestDetails.name,
-          contact: guestDetails.phone,
-          email: user?.email
-        },
+        prefill: { name: guestDetails.name, contact: guestDetails.phone, email: user?.email },
         theme: { color: "#2d3a2d" },
         modal: { ondismiss: () => setLoading(false) }
       };
@@ -184,7 +190,7 @@ const Checkout = () => {
       rzp.open();
 
     } catch (err) {
-      toast.error(err.response?.data?.message || "Booking initialization failed.");
+      toast.error("Booking failed. Please try again.");
       setLoading(false);
     }
   };
@@ -193,7 +199,7 @@ const Checkout = () => {
     <div className="min-h-screen bg-[#fcfcfc] pt-32 pb-20 px-6">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
         
-        {/* Left Section: Details */}
+        {/* Left: Details */}
         <div className="lg:col-span-7 space-y-8">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-[#2d3a2d]">
             <ChevronLeft size={18} /> <span className="text-xs font-bold uppercase tracking-widest">Back</span>
@@ -201,9 +207,10 @@ const Checkout = () => {
           
           <h1 className="font-serif italic text-4xl text-[#2d3a2d]">Finalize Your Stay</h1>
 
+          {/* Guest Info */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
             <div className="flex justify-between items-center text-sm font-bold uppercase tracking-widest text-gray-400">
-              <h3>Guest Information</h3>
+              <h3>Guest Details</h3>
               <button onClick={() => setIsCustomGuest(!isCustomGuest)} className="text-[10px] text-[#8ba88b] border-b border-[#8ba88b]/30">
                 {isCustomGuest ? "Use My Profile" : "Change Guest"}
               </button>
@@ -211,40 +218,41 @@ const Checkout = () => {
 
             {isCustomGuest ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="Name" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm" value={guestDetails.name} onChange={(e) => setGuestDetails({...guestDetails, name: e.target.value})} />
-                <input type="tel" placeholder="Phone" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm" value={guestDetails.phone} onChange={(e) => setGuestDetails({...guestDetails, phone: e.target.value})} />
+                <input type="text" placeholder="Full Name" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm" value={guestDetails.name} onChange={(e) => setGuestDetails({...guestDetails, name: e.target.value})} />
+                <input type="tel" placeholder="Contact Number" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm" value={guestDetails.phone} onChange={(e) => setGuestDetails({...guestDetails, phone: e.target.value})} />
               </div>
             ) : (
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl text-sm">
                 <User size={20} className="text-[#8ba88b]" />
-                <div><p className="font-bold">{user?.name || "Guest"}</p><p className="opacity-50">{user?.phone || "No phone added"}</p></div>
+                <div><p className="font-bold">{user?.name || "Guest"}</p><p className="opacity-50">{user?.phone || "Phone not provided"}</p></div>
               </div>
             )}
           </div>
 
+          {/* Breakdown */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">Price Breakdown</h3>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">Pricing Breakdown</h3>
             <div className="flex justify-between text-sm text-gray-500">
-              <span>Total Package ({formData.plan})</span>
+              <span>{formData.plan} Journey</span>
               <span>₹{formData.totalPrice.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm text-[#8ba88b] font-bold">
-              <span>Advance Payment (Online)</span>
+              <span>Advance Confirmation (Paid Online)</span>
               <span>- ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</span>
             </div>
             <div className="pt-4 border-t border-dashed flex justify-between items-center italic">
-              <span className="font-serif text-xl">Balance Due at Resort</span>
-              <span className="text-2xl font-serif text-[#2d3a2d]">₹{balanceDueAtResortUI.toLocaleString()}</span>
+              <span className="font-serif text-xl">Balance Due on Arrival</span>
+              <span className="text-2xl font-serif text-[#2d3a2d]">₹{balanceDueUI.toLocaleString()}</span>
             </div>
           </div>
         </div>
 
-        {/* Right Section: Payment Card */}
+        {/* Right: Payment Card */}
         <div className="lg:col-span-5">
           <div className="bg-[#2d3a2d] rounded-[3rem] p-10 text-white shadow-2xl sticky top-32 space-y-8">
             <div className="space-y-1">
-              <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Payment</p>
-              <h2 className="text-4xl font-serif italic">Secure Advance</h2>
+              <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Secure Transaction</p>
+              <h2 className="text-4xl font-serif italic">Confirm Journey</h2>
             </div>
 
             <button 
@@ -255,8 +263,8 @@ const Checkout = () => {
               <div className="flex items-center gap-4 text-left">
                 <CreditCard />
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-tight">Pay Advance ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</p>
-                  <p className="text-[10px] opacity-60">Balance: ₹{balanceDueAtResortUI.toLocaleString()}</p>
+                  <p className="text-sm font-bold uppercase">Pay Advance ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</p>
+                  <p className="text-[10px] opacity-60">Balance: ₹{balanceDueUI.toLocaleString()}</p>
                 </div>
               </div>
               {loading ? <Loader2 className="animate-spin" size={18}/> : <ShieldCheck size={18} />}
@@ -264,8 +272,7 @@ const Checkout = () => {
 
             <div className="text-center pt-4 border-t border-white/5 space-y-4">
               <p className="text-[10px] opacity-40 leading-relaxed italic">
-                This ₹{ADVANCE_AMOUNT_UI.toLocaleString()} is a non-refundable security deposit to confirm your dates. 
-                Remaining balance payable upon arrival.
+                Securely handled by Razorpay. A digital invoice will be generated instantly upon payment.
               </p>
               <a href={`https://wa.me/${settings?.whatsappNumber || '91XXXXXXXXXX'}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-[10px] text-[#8ba88b] font-bold uppercase tracking-widest">
                 <MessageCircle size={14} /> Contact Concierge
