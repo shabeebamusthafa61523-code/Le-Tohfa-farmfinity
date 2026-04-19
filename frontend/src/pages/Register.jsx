@@ -136,7 +136,7 @@ console.log("API URL:", API_URL);
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <FormInput 
-                label="Full Name" type="text" id="name" placeholder="John Doe" 
+                label="Full Name" type="text" id="name" placeholder="Your Name" 
                 value={formData.name} icon={User} errorField={errorField} onChange={handleInputChange} 
               />
               <FormInput 

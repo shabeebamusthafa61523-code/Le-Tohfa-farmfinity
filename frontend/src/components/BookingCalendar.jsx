@@ -30,16 +30,28 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
 
   // 2. Fetch Occupied Dates
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const { data } = await axios.get(`${API_URL}/api/bookings`);
-        setBookings(Array.isArray(data) ? data : (data.allBookings || []));
-      } catch (err) {
-        console.error("Calendar Sync Error:", err);
-      }
-    };
-    fetchBookings();
-  }, [API_URL]);
+   // Inside useEffect in BookingCalendar.jsx
+useEffect(() => {
+  const fetchBookings = async () => {
+    try {
+      // Get token from localStorage (handle potential JSON stringification)
+      const rawToken = localStorage.getItem('token'); 
+      const token = rawToken ? rawToken.replace(/[\\"]/g, '') : null;
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const { data } = await axios.get(`${API_URL}/api/bookings`, config);
+      setBookings(Array.isArray(data) ? data : (data.allBookings || []));
+    } catch (err) {
+      console.error("Calendar Sync Error:", err);
+    }
+  };
+  fetchBookings();
+}, [API_URL]);
 
   // 3. Calendar Grid Helpers
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -212,12 +224,12 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
 
           <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-6 rounded-3xl border border-gray-100">
             <div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entry</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-in</p>
               <p className="text-sm font-bold text-[#2d3a2d]">{selectedDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
               <p className="text-[10px] text-gray-400">{currentPlan.in}</p>
             </div>
             <div className="text-right border-l border-gray-200 pl-4">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Exit</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-out</p>
               <p className="text-sm font-bold text-[#2d3a2d]">{checkOutDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
               <p className="text-[10px] text-gray-400">{currentPlan.out}</p>
             </div>
