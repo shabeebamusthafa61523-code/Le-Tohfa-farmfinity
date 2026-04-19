@@ -48,7 +48,6 @@ const Checkout = () => {
   const balanceDueUI = formData.totalPrice - ADVANCE_AMOUNT_UI;
 
   // --- SHORT PREMIUM BOOKING ID LOGIC ---
-  // Generates ID like: LFb26-B8X2 (Prefix + Year + Short Random)
   const generateDisplayId = (mongoId) => {
     const year = new Date().getFullYear().toString().slice(-2);
     const shortPart = mongoId.slice(-4).toUpperCase();
@@ -88,7 +87,7 @@ const Checkout = () => {
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text("OFFICIAL BOOKING CONFIRMATION", 105, 32, { align: 'center' });
+      doc.text("Official Booking Confirmation & Receipt", 105, 32, { align: 'center' });
 
       autoTable(doc, {
         startY: 45,
