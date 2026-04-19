@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const asyncHandler = require('express-async-handler');
+const Settings = require('../models/Settings'); // Adjust the path to your Settings model
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -97,8 +98,10 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     throw new Error("Booking not found");
   }
 
-  const ADVANCE_AMOUNT = 3000; 
-
+const settings = await Settings.findOne();
+  // Default to 3000 only if settings doesn't exist in DB
+  const ADVANCE_AMOUNT = settings ? settings.advanceAmount : 3000; 
+  // --- FIX END ---
   const options = {
     amount: ADVANCE_AMOUNT * 100, // Amount in paise
     currency: "INR",
@@ -142,8 +145,10 @@ const verifyWebsitePayment = asyncHandler(async (req, res) => {
     throw new Error("Booking record not found during verification");
   }
 
-  const ADVANCE_PAID = 3000; 
-
+// --- FIX START ---
+  const settings = await Settings.findOne();
+  const ADVANCE_PAID = settings ? settings.advanceAmount : 3000;
+  // --- FIX END ---
   // 2. Update Booking with partial payment details
   booking.paymentStatus = 'Partial'; 
   booking.status = 'Confirmed';

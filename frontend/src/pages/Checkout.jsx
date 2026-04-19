@@ -16,7 +16,9 @@ const Checkout = () => {
 
   // --- CONFIGURATION ---
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-  const ADVANCE_AMOUNT = settings?.advanceAmount || 3000;
+  
+  // Use settings amount for UI display, fallback to 3000
+  const ADVANCE_AMOUNT_UI = settings?.advanceAmount || 3000;
 
   const [guestDetails, setGuestDetails] = useState({
     name: state?.formData?.guestName || user?.name || "",
@@ -27,7 +29,6 @@ const Checkout = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // Fix: Added /api prefix to match backend routing
         const { data } = await axios.get(`${API_URL}/api/settings`);
         setSettings(data);
       } catch (err) {
@@ -47,7 +48,7 @@ const Checkout = () => {
   }
 
   const { formData } = state;
-  const balanceDueAtResort = formData.totalPrice - ADVANCE_AMOUNT;
+  const balanceDueAtResortUI = formData.totalPrice - ADVANCE_AMOUNT_UI;
 
   // --- UI HELPERS ---
   const showConfirmationToast = () => {
@@ -66,9 +67,12 @@ const Checkout = () => {
     ), { duration: 5000 });
   };
 
-  const generateInvoice = (bookingId) => {
+  // UPDATED: Now accepts the actual amount paid from Razorpay
+  const generateInvoice = (bookingId, actualPaidINR) => {
     try {
       const doc = new jsPDF();
+      const remaining = formData.totalPrice - actualPaidINR;
+
       doc.setFont("times", "italic");
       doc.setFontSize(22);
       doc.setTextColor(45, 58, 45); 
@@ -84,8 +88,8 @@ const Checkout = () => {
           ['Plan Selected', formData.plan],
           ['Check-In Date', new Date(formData.checkIn).toLocaleDateString('en-GB')],
           ['Total Package Price', `INR ${formData.totalPrice.toLocaleString()}`],
-          ['Advance Paid', `INR ${ADVANCE_AMOUNT.toLocaleString()}`],
-          ['Balance Due at Resort', `INR ${balanceDueAtResort.toLocaleString()}`],
+          ['Advance Paid', `INR ${actualPaidINR.toLocaleString()}`],
+          ['Balance Due at Resort', `INR ${remaining.toLocaleString()}`],
         ],
         theme: 'striped',
         headStyles: { fillColor: [45, 58, 45] },
@@ -100,8 +104,6 @@ const Checkout = () => {
   // --- CORE PAYMENT LOGIC ---
   const handleRazorpayPayment = async () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-    
-    // Safety: Ensure token is cleaned of extra quotes and literal "undefined" strings
     const activeToken = token || localStorage.getItem('token');
     const cleanToken = (activeToken && activeToken !== 'undefined' && activeToken !== 'null') 
       ? activeToken.replace(/"/g, '') 
@@ -127,8 +129,11 @@ const Checkout = () => {
         guestPhone: guestDetails.phone,
       }, config);
 
-      // Step 2: Initialize Razorpay Order
+      // Step 2: Initialize Razorpay Order (Fetched from dynamic backend settings)
       const { data: order } = await axios.post(`${API_URL}/api/order/razorpay-order/${booking._id}`, {}, config);
+
+      // Extract the real amount (converted from paise)
+      const actualPaidINR = order.amount / 100;
 
       const options = {
         key: rzpKey, 
@@ -147,14 +152,17 @@ const Checkout = () => {
 
             if (data.success) {
               showConfirmationToast();
-              generateInvoice(booking._id);
+              
+              // Generate invoice using the actual amount from the order
+              generateInvoice(booking._id, actualPaidINR);
+              
               navigate('/booking-success', { 
                 state: { 
                   booking: { 
                     ...booking, 
                     ...data.updatedBooking, 
-                    advancePaid: ADVANCE_AMOUNT,
-                    remainingBalance: balanceDueAtResort
+                    advancePaid: actualPaidINR,
+                    remainingBalance: formData.totalPrice - actualPaidINR
                   } 
                 } 
               });
@@ -222,11 +230,11 @@ const Checkout = () => {
             </div>
             <div className="flex justify-between text-sm text-[#8ba88b] font-bold">
               <span>Advance Payment (Online)</span>
-              <span>- ₹{ADVANCE_AMOUNT.toLocaleString()}</span>
+              <span>- ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</span>
             </div>
             <div className="pt-4 border-t border-dashed flex justify-between items-center italic">
               <span className="font-serif text-xl">Balance Due at Resort</span>
-              <span className="text-2xl font-serif text-[#2d3a2d]">₹{balanceDueAtResort.toLocaleString()}</span>
+              <span className="text-2xl font-serif text-[#2d3a2d]">₹{balanceDueAtResortUI.toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -247,8 +255,8 @@ const Checkout = () => {
               <div className="flex items-center gap-4 text-left">
                 <CreditCard />
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-tight">Pay Advance ₹{ADVANCE_AMOUNT.toLocaleString()}</p>
-                  <p className="text-[10px] opacity-60">Balance: ₹{balanceDueAtResort.toLocaleString()}</p>
+                  <p className="text-sm font-bold uppercase tracking-tight">Pay Advance ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</p>
+                  <p className="text-[10px] opacity-60">Balance: ₹{balanceDueAtResortUI.toLocaleString()}</p>
                 </div>
               </div>
               {loading ? <Loader2 className="animate-spin" size={18}/> : <ShieldCheck size={18} />}
@@ -256,7 +264,7 @@ const Checkout = () => {
 
             <div className="text-center pt-4 border-t border-white/5 space-y-4">
               <p className="text-[10px] opacity-40 leading-relaxed italic">
-                This ₹{ADVANCE_AMOUNT.toLocaleString()} is a non-refundable security deposit to confirm your dates. 
+                This ₹{ADVANCE_AMOUNT_UI.toLocaleString()} is a non-refundable security deposit to confirm your dates. 
                 Remaining balance payable upon arrival.
               </p>
               <a href={`https://wa.me/${settings?.whatsappNumber || '91XXXXXXXXXX'}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-[10px] text-[#8ba88b] font-bold uppercase tracking-widest">
