@@ -14,7 +14,6 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState(null);
 
-  // --- CONFIGURATION ---
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const ADVANCE_AMOUNT_UI = settings?.advanceAmount || 3000;
 
@@ -48,14 +47,12 @@ const Checkout = () => {
   const { formData } = state;
   const balanceDueUI = formData.totalPrice - ADVANCE_AMOUNT_UI;
 
-  // --- HELPERS ---
-  
-  // Premium Booking ID Logic (LTJ - YearMonth - Last4ID)
+  // --- SHORT PREMIUM BOOKING ID LOGIC ---
+  // Generates ID like: LFb26-B8X2 (Prefix + Year + Short Random)
   const generateDisplayId = (mongoId) => {
-    const prefix = "LTJ";
-    const datePart = new Date().toISOString().split('T')[0].replace(/-/g, '').slice(2, 6); // e.g. 2604
-    const randomPart = mongoId.slice(-4).toUpperCase();
-    return `${prefix}-${datePart}-${randomPart}`;
+    const year = new Date().getFullYear().toString().slice(-2);
+    const shortPart = mongoId.slice(-4).toUpperCase();
+    return `LFb${year}-${shortPart}`;
   };
 
   const showConfirmationToast = () => {
@@ -84,11 +81,10 @@ const Checkout = () => {
         day: '2-digit', month: 'short', year: 'numeric'
       }) : 'N/A';
 
-      // Brand Header
       doc.setFont("times", "italic");
       doc.setFontSize(24);
       doc.setTextColor(45, 58, 45); 
-      doc.text("Journeys", 105, 25, { align: 'center' });
+      doc.text("Le'Tohfa Journeys", 105, 25, { align: 'center' });
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
@@ -98,7 +94,7 @@ const Checkout = () => {
         startY: 45,
         head: [['Description', 'Details']],
         body: [
-          ['Booking Reference', displayId],
+          ['Booking ID', displayId],
           ['Guest Name', guestDetails.name],
           ['Phone Number', guestDetails.phone],
           ['Plan Selected', formData.plan],
@@ -116,7 +112,7 @@ const Checkout = () => {
       const finalY = doc.lastAutoTable.finalY;
       doc.setFontSize(10);
       doc.setFont("times", "italic");
-      doc.text("Thank you for choosing Us. Your journey begins soon.", 105, finalY + 20, { align: 'center' });
+      doc.text("Thank you for choosing Le'Tohfa. Your journey begins soon.", 105, finalY + 20, { align: 'center' });
 
       doc.save(`LeTohfa_${displayId}.pdf`);
     } catch (error) {
@@ -124,7 +120,6 @@ const Checkout = () => {
     }
   };
 
-  // --- CORE PAYMENT LOGIC ---
   const handleRazorpayPayment = async () => {
     const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
     const activeToken = token || localStorage.getItem('token');
@@ -138,14 +133,12 @@ const Checkout = () => {
     try {
       const config = { headers: { Authorization: `Bearer ${cleanToken}` } };
 
-      // 1. Create DB Record
       const { data: booking } = await axios.post(`${API_URL}/api/order/create`, {
         ...formData,
         guestName: guestDetails.name,
         guestPhone: guestDetails.phone,
       }, config);
 
-      // 2. Init Razorpay Order
       const { data: order } = await axios.post(`${API_URL}/api/order/razorpay-order/${booking._id}`, {}, config);
       const actualPaidINR = order.amount / 100;
 
@@ -153,7 +146,7 @@ const Checkout = () => {
         key: rzpKey,
         amount: order.amount,
         currency: order.currency,
-        name: "Journeys with Us",
+        name: "Le'Tohfa Journeys",
         description: `Confirmation for ${formData.plan}`,
         order_id: order.id,
         handler: async (response) => {
@@ -178,7 +171,7 @@ const Checkout = () => {
               });
             }
           } catch (err) {
-            toast.error("Verification failed. Our team will contact you.");
+            toast.error("Verification failed.");
           }
         },
         prefill: { name: guestDetails.name, contact: guestDetails.phone, email: user?.email },
@@ -190,7 +183,7 @@ const Checkout = () => {
       rzp.open();
 
     } catch (err) {
-      toast.error("Booking failed. Please try again.");
+      toast.error("Booking failed.");
       setLoading(false);
     }
   };
@@ -198,8 +191,6 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-[#fcfcfc] pt-32 pb-20 px-6">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12">
-        
-        {/* Left: Details */}
         <div className="lg:col-span-7 space-y-8">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-[#2d3a2d]">
             <ChevronLeft size={18} /> <span className="text-xs font-bold uppercase tracking-widest">Back</span>
@@ -207,7 +198,6 @@ const Checkout = () => {
           
           <h1 className="font-serif italic text-4xl text-[#2d3a2d]">Finalize Your Stay</h1>
 
-          {/* Guest Info */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
             <div className="flex justify-between items-center text-sm font-bold uppercase tracking-widest text-gray-400">
               <h3>Guest Details</h3>
@@ -224,12 +214,11 @@ const Checkout = () => {
             ) : (
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl text-sm">
                 <User size={20} className="text-[#8ba88b]" />
-                <div><p className="font-bold">{user?.name || "Guest"}</p><p className="opacity-50">{user?.phone || "Phone not provided"}</p></div>
+                <div><p className="font-bold">{user?.name || "Guest"}</p><p className="opacity-50">{user?.phone || "No phone"}</p></div>
               </div>
             )}
           </div>
 
-          {/* Breakdown */}
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">Pricing Breakdown</h3>
             <div className="flex justify-between text-sm text-gray-500">
@@ -237,7 +226,7 @@ const Checkout = () => {
               <span>₹{formData.totalPrice.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm text-[#8ba88b] font-bold">
-              <span>Advance Confirmation (Paid Online)</span>
+              <span>Advance Confirmation</span>
               <span>- ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</span>
             </div>
             <div className="pt-4 border-t border-dashed flex justify-between items-center italic">
@@ -247,7 +236,6 @@ const Checkout = () => {
           </div>
         </div>
 
-        {/* Right: Payment Card */}
         <div className="lg:col-span-5">
           <div className="bg-[#2d3a2d] rounded-[3rem] p-10 text-white shadow-2xl sticky top-32 space-y-8">
             <div className="space-y-1">
@@ -255,15 +243,11 @@ const Checkout = () => {
               <h2 className="text-4xl font-serif italic">Confirm Journey</h2>
             </div>
 
-            <button 
-              disabled={loading}
-              onClick={handleRazorpayPayment}
-              className="w-full bg-[#8ba88b] hover:bg-[#9bb89b] p-6 rounded-2xl flex items-center justify-between transition-all active:scale-95 disabled:opacity-50"
-            >
+            <button disabled={loading} onClick={handleRazorpayPayment} className="w-full bg-[#8ba88b] hover:bg-[#9bb89b] p-6 rounded-2xl flex items-center justify-between transition-all active:scale-95 disabled:opacity-50">
               <div className="flex items-center gap-4 text-left">
                 <CreditCard />
                 <div>
-                  <p className="text-sm font-bold uppercase">Pay Advance ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</p>
+                  <p className="text-sm font-bold uppercase tracking-tight">Pay Advance ₹{ADVANCE_AMOUNT_UI.toLocaleString()}</p>
                   <p className="text-[10px] opacity-60">Balance: ₹{balanceDueUI.toLocaleString()}</p>
                 </div>
               </div>
