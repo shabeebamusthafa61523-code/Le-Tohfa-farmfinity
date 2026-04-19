@@ -43,7 +43,7 @@ useEffect(() => {
         },
       };
 
-      const { data } = await axios.get(`${API_URL}/api/bookings/booked-dates`, config);
+      const { data } = await axios.get(`${API_URL}/api/bookings`, config);
       setBookings(Array.isArray(data) ? data : (data.allBookings || []));
     } catch (err) {
       console.error("Calendar Sync Error:", err);

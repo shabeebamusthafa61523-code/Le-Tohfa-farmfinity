@@ -17,7 +17,7 @@ router.get('/mybookings', getMyBookings);
 
 // Protected Admin routes
 router.route('/')
-  .get(protect, admin, getBookings);
+  .get(protect, getBookings);
 
 router.post('/admin-book-manual', protect, admin, createManualBooking);
 router.post('/block-date', protect, admin, blockDate);
