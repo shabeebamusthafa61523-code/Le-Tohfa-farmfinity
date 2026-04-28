@@ -15,7 +15,8 @@ const DEFAULT_PLAN_SETTINGS = {
 
 const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // FIXED: Initialized to null so no date is selected by default
+  const [selectedDate, setSelectedDate] = useState(null); 
   const [guestCount, setGuestCount] = useState(20);
   const [bookings, setBookings] = useState([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -29,76 +30,66 @@ const BookingCalendar = ({ activePlan = "Staycation", settings }) => {
   }, [settings, activePlan]);
 
   // 2. Fetch Occupied Dates
-  // Inside useEffect in BookingCalendar.jsx
-useEffect(() => {
-  const fetchBookings = async () => {
-    try {
-      // Get token from localStorage (handle potential JSON stringification)
-      const rawToken = localStorage.getItem('token'); 
-      const token = rawToken ? rawToken.replace(/[\\"]/g, '') : null;
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const rawToken = localStorage.getItem('token'); 
+        const token = rawToken ? rawToken.replace(/[\\"]/g, '') : null;
 
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
 
-      const { data } = await axios.get(`${API_URL}/api/bookings`, config);
-      setBookings(Array.isArray(data) ? data : (data.allBookings || []));
-    } catch (err) {
-      console.error("Calendar Sync Error:", err);
-    }
-  };
-  fetchBookings();
-}, [API_URL]);
+        const { data } = await axios.get(`${API_URL}/api/bookings`, config);
+        setBookings(Array.isArray(data) ? data : (data.allBookings || []));
+      } catch (err) {
+        console.error("Calendar Sync Error:", err);
+      }
+    };
+    fetchBookings();
+  }, [API_URL]);
 
   // 3. Calendar Grid Helpers
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
-  const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; // Start from Monday
+  const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1; 
 
- const getTileStatus = (day) => {
-  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-  const dateStr = date.toLocaleDateString('en-CA');
-  
-  if (dateStr < todayStr) return "past";
+  const getTileStatus = (day) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const dateStr = date.toLocaleDateString('en-CA');
+    
+    if (dateStr < todayStr) return "past";
 
-  const isConflict = bookings.some(b => {
-    const bCheckInStr = b.checkIn.split('T')[0];
-    const bCheckOutStr = b.checkOut.split('T')[0];
-    const bPlan = b.plan;
+    const isConflict = bookings.some(b => {
+      const bCheckInStr = b.checkIn.split('T')[0];
+      const bCheckOutStr = b.checkOut.split('T')[0];
+      const bPlan = b.plan;
 
-    // 1. DIRECT BLOCK: If a booking starts on this exact day
-    if (bCheckInStr === dateStr) return true;
+      if (bCheckInStr === dateStr) return true;
 
-    // 2. STAYCATION CHECK-OUT BLOCK: 
-    // If we are looking at a Daycation/Event, we MUST block the date 
-    // if a Staycation is checking out today (because they stay until 12 PM).
-    if (activePlan !== 'Staycation') {
-      if (bCheckOutStr === dateStr && bPlan === 'Staycation') return true;
-    }
+      if (activePlan !== 'Staycation') {
+        if (bCheckOutStr === dateStr && bPlan === 'Staycation') return true;
+      }
 
-    // 3. STAYCATION CHECK-IN BLOCK:
-    // If we are looking at a Staycation, we MUST block today 
-    // if a Daycation or Event is already happening today.
-    if (activePlan === 'Staycation') {
-      if (bCheckInStr === dateStr && (bPlan === 'Daycation' || bPlan === 'Event')) return true;
-      
-      // Also block today if a Daycation/Event is booked for TOMORROW
-      // (Because Staycation checkout is 12 PM tomorrow, clashing with 9 AM start)
-      const tomorrow = new Date(date);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toLocaleDateString('en-CA');
-      if (bCheckInStr === tomorrowStr && (bPlan === 'Daycation' || bPlan === 'Event')) return true;
-    }
+      if (activePlan === 'Staycation') {
+        if (bCheckInStr === dateStr && (bPlan === 'Daycation' || bPlan === 'Event')) return true;
+        
+        const tomorrow = new Date(date);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toLocaleDateString('en-CA');
+        if (bCheckInStr === tomorrowStr && (bPlan === 'Daycation' || bPlan === 'Event')) return true;
+      }
 
-    return false;
-  });
+      return false;
+    });
 
-  if (isConflict) return "booked";
-  if (selectedDate.toLocaleDateString('en-CA') === dateStr) return "selected";
-  return "available";
-}; 
+    if (isConflict) return "booked";
+    // FIXED: Added check for selectedDate existence
+    if (selectedDate && selectedDate.toLocaleDateString('en-CA') === dateStr) return "selected";
+    return "available";
+  }; 
 
   // 4. Calculations
   const totalPrice = useMemo(() => {
@@ -107,6 +98,8 @@ useEffect(() => {
   }, [guestCount, currentPlan]);
 
   const checkOutDate = useMemo(() => {
+    // FIXED: Added guard for null selectedDate
+    if (!selectedDate) return null;
     const d = new Date(selectedDate);
     if (currentPlan.nextDay) d.setDate(d.getDate() + 1);
     return d;
@@ -114,6 +107,8 @@ useEffect(() => {
 
   // 5. Actions
   const handleConfirmNow = () => {
+    if (!selectedDate) return; // Guard clause
+
     const savedUser = localStorage.getItem('userInfo');
     const userInfo = savedUser ? JSON.parse(savedUser) : null;
     
@@ -132,14 +127,14 @@ useEffect(() => {
 
   const handleWhatsApp = () => {
     const whatsappNum = (settings?.whatsappNumber || "919562042711").replace(/\D/g, '');
-    const message = `Hello! I'd like to book a ${activePlan} on ${selectedDate.toLocaleDateString('en-GB')}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString('en-IN')}`;
+    const dateDisplay = selectedDate ? selectedDate.toLocaleDateString('en-GB') : "[Select Date]";
+    const message = `Hello! I'd like to book a ${activePlan} on ${dateDisplay}. Guests: ${guestCount}. Total: ₹${totalPrice.toLocaleString('en-IN')}`;
     window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
- return (
+  return (
     <div className="grid lg:grid-cols-12 gap-8 p-4 bg-white/50 rounded-[3rem] backdrop-blur-md border border-white/20">
       
-      {/* --- CUSTOM CALENDAR SECTION --- */}
       <div className="lg:col-span-7">
         <div className="flex justify-between items-end mb-8 px-4">
           <div>
@@ -160,10 +155,8 @@ useEffect(() => {
             <div key={d} className="text-center text-[10px] font-bold text-gray-300 uppercase mb-2">{d}</div>
           ))}
           
-          {/* Empty slots for start of month */}
           {Array(adjustedFirstDay).fill(0).map((_, i) => <div key={`empty-${i}`} />)}
 
-          {/* Actual Day Tiles */}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const status = getTileStatus(day);
@@ -200,7 +193,6 @@ useEffect(() => {
           })}
         </div>
 
-        {/* Legend */}
         <div className="mt-8 flex gap-6 px-4 py-4 border-t border-gray-100 justify-center md:justify-start">
            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-200"/> Available</div>
            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase"><div className="w-3 h-3 rounded-full bg-[#2d3a2d]"/> Selected</div>
@@ -208,7 +200,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* --- SUMMARY CARD SECTION --- */}
       <div className="lg:col-span-5">
         <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-[#2d3a2d]/5 space-y-6 sticky top-8 border border-gray-50">
           <div className="flex justify-between items-center">
@@ -224,12 +215,18 @@ useEffect(() => {
           <div className="grid grid-cols-2 gap-4 bg-gray-50/80 p-6 rounded-3xl border border-gray-100">
             <div>
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-in</p>
-              <p className="text-sm font-bold text-[#2d3a2d]">{selectedDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
+              <p className="text-sm font-bold text-[#2d3a2d]">
+                {/* FIXED: Check if date exists before formatting */}
+                {selectedDate ? selectedDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'}) : '--'}
+              </p>
               <p className="text-[10px] text-gray-400">{currentPlan.in}</p>
             </div>
             <div className="text-right border-l border-gray-200 pl-4">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Check-out</p>
-              <p className="text-sm font-bold text-[#2d3a2d]">{checkOutDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</p>
+              <p className="text-sm font-bold text-[#2d3a2d]">
+                {/* FIXED: Check if date exists before formatting */}
+                {checkOutDate ? checkOutDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short'}) : '--'}
+              </p>
               <p className="text-[10px] text-gray-400">{currentPlan.out}</p>
             </div>
           </div>
@@ -255,9 +252,14 @@ useEffect(() => {
           <div className="space-y-3 pt-2">
             <button 
               onClick={handleConfirmNow}
-              className="w-full bg-[#8ba88b] text-white py-5 rounded-2xl font-serif italic text-xl flex items-center justify-center gap-3 hover:bg-[#7a997a] transition-all shadow-lg active:scale-95"
+              // FIXED: Button is disabled and styled differently if no date is selected
+              disabled={!selectedDate}
+              className={`w-full py-5 rounded-2xl font-serif italic text-xl flex items-center justify-center gap-3 transition-all shadow-lg 
+                ${!selectedDate 
+                  ? 'bg-gray-300 cursor-not-allowed opacity-70 text-gray-500' 
+                  : 'bg-[#8ba88b] text-white hover:bg-[#7a997a] active:scale-95'}`}
             >
-              Confirm Booking <ArrowRight size={20} />
+              {selectedDate ? 'Confirm Booking' : 'Please Select a Date'} <ArrowRight size={20} />
             </button>
 
             <button 
