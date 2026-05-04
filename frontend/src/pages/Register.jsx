@@ -72,11 +72,13 @@ const Register = () => {
       return false;
     }
 
-    if (phone.trim().length < 10) {
-      toast.error("Check your number: It should be at least 10 digits");
-      setErrorField('phone');
-      return false;
-    }
+   // Add a Regex check in validateForm
+const phoneRegex = /^[0-9+]{10,15}$/; 
+if (!phoneRegex.test(phone.trim())) {
+  toast.error("Please enter a valid phone number");
+  setErrorField('phone');
+  return false;
+}
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
