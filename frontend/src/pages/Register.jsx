@@ -50,44 +50,75 @@ const Register = () => {
   const navigate = useNavigate();
   // Ensure your .env has VITE_API_URL or it defaults to localhost
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const handleInputChange = (id, value) => {
+  let processedValue = value;
 
-  const handleInputChange = (id, value) => {
-    setFormData(prev => ({ ...prev, [id]: value }));
-    if (errorField === id) setErrorField(null); // Clear error when user types
-  };
+  if (id === 'phone') {
+    // Remove all non-digit characters immediately
+    processedValue = value.replace(/\D/g, '');
+    
+    // Optional: Enforce a max length of 10 digits as they type
+    if (processedValue.length > 10) {
+      processedValue = processedValue.slice(0, 10);
+    }
+  }
+
+  setFormData(prev => ({ ...prev, [id]: processedValue }));
+  if (errorField === id) setErrorField(null);
+};
 
   const validateForm = () => {
-    const { name, email, phone, password } = formData;
-    setErrorField(null);
+  const { name, email, phone, password } = formData;
+  setErrorField(null);
 
-    if (name.trim().length < 3) {
-      toast.error("Please enter your full name");
-      setErrorField('name');
-      return false;
-    }
+  if (name.trim().length < 3) {
+    toast.error("Please enter your full name");
+    setErrorField('name');
+    return false;
+  }
 
-    if (!email.includes('@')) {
-      toast.error("Invalid email address");
-      setErrorField('email');
-      return false;
-    }
+  if (!email.includes('@')) {
+    toast.error("Invalid email address");
+    setErrorField('email');
+    return false;
+  }
+
+  // --- STRICT PHONE VALIDATION ---
+  const phoneTrimmed = phone.trim();
+  
+  // 1. Check for exactly 10 digits
+  const isTenDigits = /^[0-9]{10}$/.test(phoneTrimmed);
+  
+  // 2. Check for obvious fake sequences (e.g., 1234567890)
+  const isSequence = /^(?:0123456789|1234567890|9876543210)$/.test(phoneTrimmed);
+  
+  // 3. Check for repeated digits (e.g., 0000000000)
+  const isRepeated = /^(\d)\1{9}$/.test(phoneTrimmed);
+
+  if (!isTenDigits) {
+    toast.error("Phone number must be exactly 10 digits");
+    setErrorField('phone');
+    return false;
+  }
+
+  if (isSequence || isRepeated) {
+    toast.error("Please enter a valid, non-test phone number");
+    setErrorField('phone');
+    return false;
+  }
+  // -------------------------------
+
+  if (password.length < 6) {
+    toast.error("Password must be at least 6 characters");
+    setErrorField('password');
+    return false;
+  }
+
+  return true;
+};
 
    // Add a Regex check in validateForm
-const phoneRegex = /^[0-9+]{10,15}$/; 
-if (!phoneRegex.test(phone.trim())) {
-  toast.error("Please enter a valid phone number");
-  setErrorField('phone');
-  return false;
-}
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      setErrorField('password');
-      return false;
-    }
-
-    return true;
-  };
 console.log("API URL:", API_URL);
   const handleSubmit = async (e) => {
     e.preventDefault();
